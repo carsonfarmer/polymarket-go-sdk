@@ -373,7 +373,7 @@ func TestMarketFilterBothMarketsAndEvents(t *testing.T) {
 		User: user,
 		Filter: &MarketFilter{
 			Markets:  []common.Hash{common.HexToHash("0x01")},
-			EventIDs: []string{"event1"},
+			EventIDs: []int64{1},
 		},
 	})
 	if !errors.Is(err, ErrInvalidMarketFilter) {
@@ -576,7 +576,7 @@ func TestMarketFilterByMarkets(t *testing.T) {
 }
 
 func TestMarketFilterByEventIDs(t *testing.T) {
-	f := MarketFilterByEventIDs([]string{"e1", "e2"})
+	f := MarketFilterByEventIDs([]int64{1, 2})
 	if len(f.EventIDs) != 2 {
 		t.Errorf("expected 2 event IDs, got %d", len(f.EventIDs))
 	}

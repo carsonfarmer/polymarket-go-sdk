@@ -244,6 +244,21 @@ func (c *clientImpl) LastTradesPrices(ctx context.Context, req *clobtypes.LastTr
 	return resp, mapError(err)
 }
 
+func (c *clientImpl) LastTradesPricesQuery(ctx context.Context, req *clobtypes.LastTradesPricesQueryRequest) (clobtypes.LastTradesPricesResponse, error) {
+	if req != nil && len(req.TokenIDs) > clobtypes.MaxLastTradesPricesQuerySize {
+		return nil, fmt.Errorf("token_ids count %d exceeds maximum %d", len(req.TokenIDs), clobtypes.MaxLastTradesPricesQuerySize)
+	}
+	q := url.Values{}
+	if req != nil {
+		for _, id := range req.TokenIDs {
+			q.Add("token_id", id)
+		}
+	}
+	var resp clobtypes.LastTradesPricesResponse
+	err := c.httpClient.Get(ctx, "/last-trades-prices", q, &resp)
+	return resp, mapError(err)
+}
+
 func (c *clientImpl) TickSize(ctx context.Context, req *clobtypes.TickSizeRequest) (clobtypes.TickSizeResponse, error) {
 	q := url.Values{}
 	if req != nil {
@@ -267,6 +282,31 @@ func (c *clientImpl) TickSize(ctx context.Context, req *clobtypes.TickSizeReques
 		if tickSize != 0 {
 			c.cache.mu.Lock()
 			c.cache.tickSizes[req.TokenID] = tickSize
+			c.cache.mu.Unlock()
+		}
+	}
+	return resp, mapError(err)
+}
+
+func (c *clientImpl) TickSizeByPath(ctx context.Context, tokenID string) (clobtypes.TickSizeResponse, error) {
+	if tokenID != "" && c.cache != nil {
+		c.cache.mu.RLock()
+		if cached, ok := c.cache.tickSizes[tokenID]; ok && cached != 0 {
+			c.cache.mu.RUnlock()
+			return clobtypes.TickSizeResponse{MinimumTickSize: cached}, nil
+		}
+		c.cache.mu.RUnlock()
+	}
+	var resp clobtypes.TickSizeResponse
+	err := c.httpClient.Get(ctx, fmt.Sprintf("/tick-size/%s", tokenID), nil, &resp)
+	if err == nil && tokenID != "" && c.cache != nil {
+		tickSize := resp.MinimumTickSize
+		if tickSize == 0 {
+			tickSize = resp.TickSize
+		}
+		if tickSize != 0 {
+			c.cache.mu.Lock()
+			c.cache.tickSizes[tokenID] = tickSize
 			c.cache.mu.Unlock()
 		}
 	}
@@ -321,6 +361,33 @@ func (c *clientImpl) FeeRate(ctx context.Context, req *clobtypes.FeeRateRequest)
 		if fee > 0 {
 			c.cache.mu.Lock()
 			c.cache.feeRates[req.TokenID] = fee
+			c.cache.mu.Unlock()
+		}
+	}
+	return resp, mapError(err)
+}
+
+func (c *clientImpl) FeeRateByPath(ctx context.Context, tokenID string) (clobtypes.FeeRateResponse, error) {
+	if tokenID != "" && c.cache != nil {
+		c.cache.mu.RLock()
+		if cached, ok := c.cache.feeRates[tokenID]; ok {
+			c.cache.mu.RUnlock()
+			return clobtypes.FeeRateResponse{BaseFee: int(cached)}, nil
+		}
+		c.cache.mu.RUnlock()
+	}
+	var resp clobtypes.FeeRateResponse
+	err := c.httpClient.Get(ctx, fmt.Sprintf("/fee-rate/%s", tokenID), nil, &resp)
+	if err == nil && tokenID != "" && c.cache != nil {
+		fee := int64(resp.BaseFee)
+		if fee == 0 && resp.FeeRate != "" {
+			if parsed, parseErr := strconv.ParseInt(resp.FeeRate, 10, 64); parseErr == nil {
+				fee = parsed
+			}
+		}
+		if fee > 0 {
+			c.cache.mu.Lock()
+			c.cache.feeRates[tokenID] = fee
 			c.cache.mu.Unlock()
 		}
 	}

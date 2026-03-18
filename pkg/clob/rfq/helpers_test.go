@@ -634,41 +634,38 @@ func TestApplyRFQFilters_AllFields(t *testing.T) {
 	if q.Get("state") != "active" {
 		t.Fatalf("expected active, got %s", q.Get("state"))
 	}
-	if q.Get("requestIds") != "r1,r2" {
-		t.Fatalf("expected r1,r2, got %s", q.Get("requestIds"))
+	if q.Get("request_ids") != "r1,r2" {
+		t.Fatalf("expected r1,r2, got %s", q.Get("request_ids"))
 	}
-	if q.Get("quoteIds") != "q1" {
-		t.Fatalf("expected q1, got %s", q.Get("quoteIds"))
+	if q.Get("quote_ids") != "q1" {
+		t.Fatalf("expected q1, got %s", q.Get("quote_ids"))
 	}
 	if q.Get("markets") != "m1,m2" {
 		t.Fatalf("expected m1,m2, got %s", q.Get("markets"))
 	}
-	if q.Get("sizeMin") != "1" {
-		t.Fatalf("expected 1, got %s", q.Get("sizeMin"))
-	}
 	if q.Get("size_min") != "1" {
 		t.Fatalf("expected 1, got %s", q.Get("size_min"))
 	}
-	if q.Get("sizeMax") != "100" {
-		t.Fatalf("expected 100, got %s", q.Get("sizeMax"))
+	if q.Get("size_max") != "100" {
+		t.Fatalf("expected 100, got %s", q.Get("size_max"))
 	}
-	if q.Get("sizeUsdcMin") != "10" {
-		t.Fatalf("expected 10, got %s", q.Get("sizeUsdcMin"))
+	if q.Get("size_usdc_min") != "10" {
+		t.Fatalf("expected 10, got %s", q.Get("size_usdc_min"))
 	}
-	if q.Get("sizeUsdcMax") != "1000" {
-		t.Fatalf("expected 1000, got %s", q.Get("sizeUsdcMax"))
+	if q.Get("size_usdc_max") != "1000" {
+		t.Fatalf("expected 1000, got %s", q.Get("size_usdc_max"))
 	}
-	if q.Get("priceMin") != "0.1" {
-		t.Fatalf("expected 0.1, got %s", q.Get("priceMin"))
+	if q.Get("price_min") != "0.1" {
+		t.Fatalf("expected 0.1, got %s", q.Get("price_min"))
 	}
-	if q.Get("priceMax") != "0.9" {
-		t.Fatalf("expected 0.9, got %s", q.Get("priceMax"))
+	if q.Get("price_max") != "0.9" {
+		t.Fatalf("expected 0.9, got %s", q.Get("price_max"))
 	}
-	if q.Get("sortBy") != "size" {
-		t.Fatalf("expected size, got %s", q.Get("sortBy"))
+	if q.Get("sort_by") != "size" {
+		t.Fatalf("expected size, got %s", q.Get("sort_by"))
 	}
-	if q.Get("sortDir") != "desc" {
-		t.Fatalf("expected desc, got %s", q.Get("sortDir"))
+	if q.Get("sort_dir") != "desc" {
+		t.Fatalf("expected desc, got %s", q.Get("sort_dir"))
 	}
 }
 

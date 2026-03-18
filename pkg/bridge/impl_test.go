@@ -79,7 +79,7 @@ func TestBridgeMethods(t *testing.T) {
 
 	t.Run("SupportedAssetsInfo", func(t *testing.T) {
 		mock.reset()
-		mock.addResponse("/supported-assets", `{"supported_assets":[]}`)
+		mock.addResponse("/supported-assets", `{"supportedAssets":[]}`)
 		_, _ = client.SupportedAssetsInfo(ctx)
 	})
 
@@ -97,7 +97,7 @@ func TestBridgeMethods(t *testing.T) {
 
 	t.Run("SupportedAssets", func(t *testing.T) {
 		mock.reset()
-		mock.addResponse("/supported-assets", `{"supported_assets":[{"token":{"address":"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"}}]}`)
+		mock.addResponse("/supported-assets", `{"supportedAssets":[{"token":{"address":"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"}}]}`)
 		assets, err := client.SupportedAssets(ctx)
 		if err != nil || len(assets) == 0 {
 			t.Errorf("SupportedAssets failed: %v", err)
@@ -253,7 +253,7 @@ func TestStatus_Success(t *testing.T) {
 
 func TestSupportedAssets_EmptyList(t *testing.T) {
 	mock := &mockDoer{}
-	mock.addResponse("/supported-assets", `{"supported_assets":[]}`)
+	mock.addResponse("/supported-assets", `{"supportedAssets":[]}`)
 	c := NewClient(transport.NewClient(mock, "http://example"))
 	assets, err := c.SupportedAssets(context.Background())
 	if err != nil {
@@ -266,7 +266,7 @@ func TestSupportedAssets_EmptyList(t *testing.T) {
 
 func TestSupportedAssets_FiltersInvalidAddresses(t *testing.T) {
 	mock := &mockDoer{}
-	mock.addResponse("/supported-assets", `{"supported_assets":[
+	mock.addResponse("/supported-assets", `{"supportedAssets":[
 		{"token":{"address":"not-hex"}},
 		{"token":{"address":""}},
 		{"token":{"address":"0x0000000000000000000000000000000000000000"}},
@@ -284,7 +284,7 @@ func TestSupportedAssets_FiltersInvalidAddresses(t *testing.T) {
 
 func TestSupportedAssets_DeduplicatesAddresses(t *testing.T) {
 	mock := &mockDoer{}
-	mock.addResponse("/supported-assets", `{"supported_assets":[
+	mock.addResponse("/supported-assets", `{"supportedAssets":[
 		{"token":{"address":"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"}},
 		{"token":{"address":"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"}}
 	]}`)

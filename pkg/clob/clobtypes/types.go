@@ -38,6 +38,8 @@ const (
 	MaxPostOrdersBatchSize = 15
 	// MaxCancelOrdersBatchSize is the maximum number of order IDs allowed in a single CancelOrders request.
 	MaxCancelOrdersBatchSize = 3000
+	// MaxLastTradesPricesQuerySize is the maximum number of token IDs allowed in a single LastTradesPricesQuery request.
+	MaxLastTradesPricesQuerySize = 500
 )
 
 // Request types.
@@ -90,6 +92,9 @@ type (
 		TokenID string `json:"token_id"`
 	}
 	LastTradesPricesRequest struct {
+		TokenIDs []string `json:"token_ids"`
+	}
+	LastTradesPricesQueryRequest struct {
 		TokenIDs []string `json:"token_ids"`
 	}
 	TickSizeRequest struct {
@@ -426,16 +431,22 @@ type (
 // Auxiliary types.
 type (
 	Market struct {
-		ID          string        `json:"id"`
-		Question    string        `json:"question"`
-		ConditionID string        `json:"condition_id"`
-		Slug        string        `json:"slug"`
-		Resolution  string        `json:"resolution"`
-		EndDate     string        `json:"end_date"`
-		Tokens      []MarketToken `json:"tokens"`
-		// Add minimal fields to match "Simplified" or "Active"
-		Active bool `json:"active"`
-		Closed bool `json:"closed"`
+		ID             string        `json:"id"`
+		Question       string        `json:"question"`
+		ConditionID    string        `json:"condition_id"`
+		Slug           string        `json:"slug"`
+		Resolution     string        `json:"resolution"`
+		EndDate        string        `json:"end_date"`
+		Tokens         []MarketToken `json:"tokens"`
+		Active         bool          `json:"active"`
+		Closed         bool          `json:"closed"`
+		Volume         string        `json:"volume,omitempty"`
+		Liquidity      string        `json:"liquidity,omitempty"`
+		Volume24hr     string        `json:"volume24hr,omitempty"`
+		Spread         string        `json:"spread,omitempty"`
+		BestBid        string        `json:"bestBid,omitempty"`
+		BestAsk        string        `json:"bestAsk,omitempty"`
+		LastTradePrice string        `json:"lastTradePrice,omitempty"`
 	}
 
 	MarketToken struct {
@@ -586,7 +597,21 @@ type (
 	}
 
 	TradeEvent struct {
-		// ...
+		ID              string `json:"id,omitempty"`
+		AssetID         string `json:"asset_id"`
+		Market          string `json:"market,omitempty"`
+		Price           string `json:"price"`
+		Size            string `json:"size"`
+		Side            string `json:"side"`
+		Status          string `json:"status,omitempty"`
+		Timestamp       string `json:"timestamp"`
+		TakerOrderID    string `json:"taker_order_id,omitempty"`
+		MakerOrderID    string `json:"maker_order_id,omitempty"`
+		Owner           string `json:"owner,omitempty"`
+		MakerAddress    string `json:"maker_address,omitempty"`
+		FeeRateBps      string `json:"fee_rate_bps,omitempty"`
+		TransactionHash string `json:"transaction_hash,omitempty"`
+		MatchTime       string `json:"match_time,omitempty"`
 	}
 
 	APIKeyInfo struct {

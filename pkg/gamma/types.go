@@ -6,7 +6,7 @@ import "encoding/json"
 type MarketsRequest struct {
 	Limit               *int     `json:"limit,omitempty"`
 	Offset              *int     `json:"offset,omitempty"`
-	Order               string   `json:"order,omitempty"` // "volume", "created", "liquidity"
+	Order               string   `json:"order,omitempty"`
 	Ascending           *bool    `json:"ascending,omitempty"`
 	Slug                string   `json:"slug,omitempty"`
 	Slugs               []string `json:"slugs,omitempty"`
@@ -23,7 +23,7 @@ type MarketsRequest struct {
 	UmaResolutionStatus string   `json:"uma_resolution_status,omitempty"`
 	GameID              string   `json:"game_id,omitempty"`
 	SportsMarketTypes   []string `json:"sports_market_types,omitempty"`
-	VolumeMin           *string  `json:"volume_min,omitempty"` // string to support large numbers
+	VolumeMin           *string  `json:"volume_min,omitempty"`
 	VolumeMax           *string  `json:"volume_max,omitempty"`
 	LiquidityMin        *string  `json:"liquidity_min,omitempty"`
 	LiquidityMax        *string  `json:"liquidity_max,omitempty"`
@@ -31,12 +31,14 @@ type MarketsRequest struct {
 	LiquidityNumMax     *string  `json:"liquidity_num_max,omitempty"`
 	VolumeNumMin        *string  `json:"volume_num_min,omitempty"`
 	VolumeNumMax        *string  `json:"volume_num_max,omitempty"`
-	StartDateMin        string   `json:"start_date_min,omitempty"` // ISO string
+	StartDateMin        string   `json:"start_date_min,omitempty"`
 	StartDateMax        string   `json:"start_date_max,omitempty"`
 	EndDateMin          string   `json:"end_date_min,omitempty"`
 	EndDateMax          string   `json:"end_date_max,omitempty"`
 	RewardsMinSize      *string  `json:"rewards_min_size,omitempty"`
 	RewardsMaxSize      *string  `json:"rewards_max_size,omitempty"`
+	SlugContains        string   `json:"slug_contains,omitempty"`
+	ExcludeTagID        []string `json:"exclude_tag_id,omitempty"`
 }
 
 type TeamsRequest struct {
@@ -107,6 +109,7 @@ type EventsRequest struct {
 	StartDateMax    string   `json:"start_date_max,omitempty"`
 	EndDateMin      string   `json:"end_date_min,omitempty"`
 	EndDateMax      string   `json:"end_date_max,omitempty"`
+	SlugContains    string   `json:"slug_contains,omitempty"`
 }
 
 type EventByIDRequest struct {
@@ -203,36 +206,73 @@ type PublicSearchRequest struct {
 }
 
 type Market struct {
-	ID                 string  `json:"id"`
-	Question           string  `json:"question"`
-	ConditionID        string  `json:"conditionId"`
-	Slug               string  `json:"slug"`
-	ResolutionSource   string  `json:"resolutionSource"`
-	EndDate            string  `json:"endDate"`
-	Liquidity          string  `json:"liquidity"`
-	StartDate          string  `json:"startDate"`
-	Volume             string  `json:"volume"`
-	Active             bool    `json:"active"`
-	Closed             bool    `json:"closed"`
-	MarketMakerAddress string  `json:"marketMakerAddress"`
-	Tags               []Tag   `json:"tags"`
-	Tokens             []Token `json:"tokens"`
-	ClobTokenIds       string  `json:"clobTokenIds"`
-	Outcomes           string  `json:"outcomes"`
-	OutcomePrices      string  `json:"outcomePrices"`
-	Rewards            Rewards `json:"rewards"`
-	NegRisk            bool    `json:"negRisk"`
-	NegRiskMarketID    string  `json:"negRiskMarketId,omitempty"`
-	NegRiskRequestID   string  `json:"negRiskRequestId,omitempty"`
-	EnableOrderBook    bool    `json:"enableOrderBook,omitempty"`
-	QuestionID         string  `json:"questionId,omitempty"`
-	Volume24hr         string  `json:"volume24hr,omitempty"`
-	Spread             string  `json:"spread,omitempty"`
-	BestBid            string  `json:"bestBid,omitempty"`
-	BestAsk            string  `json:"bestAsk,omitempty"`
-	LastTradePrice     string  `json:"lastTradePrice,omitempty"`
-	CommentCount       int     `json:"commentCount,omitempty"`
-	Cyom               bool    `json:"cyom,omitempty"`
+	ID                    string  `json:"id"`
+	Question              string  `json:"question"`
+	ConditionID           string  `json:"conditionId"`
+	Slug                  string  `json:"slug"`
+	ResolutionSource      string  `json:"resolutionSource"`
+	EndDate               string  `json:"endDate"`
+	Liquidity             string  `json:"liquidity"`
+	StartDate             string  `json:"startDate"`
+	Volume                string  `json:"volume"`
+	Active                bool    `json:"active"`
+	Closed                bool    `json:"closed"`
+	MarketMakerAddress    string  `json:"marketMakerAddress"`
+	Tags                  []Tag   `json:"tags"`
+	Tokens                []Token `json:"tokens"`
+	ClobTokenIds          string  `json:"clobTokenIds"`
+	Outcomes              string  `json:"outcomes"`
+	OutcomePrices         string  `json:"outcomePrices"`
+	Rewards               Rewards `json:"rewards"`
+	NegRisk               bool    `json:"negRisk"`
+	NegRiskMarketID       string  `json:"negRiskMarketId,omitempty"`
+	NegRiskRequestID      string  `json:"negRiskRequestId,omitempty"`
+	EnableOrderBook       bool    `json:"enableOrderBook,omitempty"`
+	QuestionID            string  `json:"questionId,omitempty"`
+	Volume24hr            float64 `json:"volume24hr,omitempty"`
+	Spread                string  `json:"spread,omitempty"`
+	BestBid               string  `json:"bestBid,omitempty"`
+	BestAsk               string  `json:"bestAsk,omitempty"`
+	LastTradePrice        string  `json:"lastTradePrice,omitempty"`
+	CommentCount          int     `json:"commentCount,omitempty"`
+	Cyom                  bool    `json:"cyom,omitempty"`
+	OpenInterest          string  `json:"openInterest,omitempty"`
+	VolumeNum             string  `json:"volumeNum,omitempty"`
+	LiquidityNum          string  `json:"liquidityNum,omitempty"`
+	Volume1wk             int     `json:"volume1wk,omitempty"`
+	Volume1mo             int     `json:"volume1mo,omitempty"`
+	Volume1yr             int     `json:"volume1yr,omitempty"`
+	GameStartTime         string  `json:"gameStartTime,omitempty"`
+	SecondsDelay          int     `json:"secondsDelay,omitempty"`
+	Category              string  `json:"category,omitempty"`
+	Subcategory           string  `json:"subcategory,omitempty"`
+	Image                 string  `json:"image,omitempty"`
+	Icon                  string  `json:"icon,omitempty"`
+	TwitterCardImage      string  `json:"twitterCardImage,omitempty"`
+	MarketType            string  `json:"marketType,omitempty"`
+	FormatType            string  `json:"formatType,omitempty"`
+	LowerBound            string  `json:"lowerBound,omitempty"`
+	UpperBound            string  `json:"upperBound,omitempty"`
+	ClosedTime            string  `json:"closedTime,omitempty"`
+	ResolvedBy            string  `json:"resolvedBy,omitempty"`
+	UmaEndDate            string  `json:"umaEndDate,omitempty"`
+	OrderMinSize          float64 `json:"orderMinSize,omitempty"`
+	OrderPriceMinTickSize float64 `json:"orderPriceMinTickSize,omitempty"`
+	MakerBaseFee          int     `json:"makerBaseFee,omitempty"`
+	TakerBaseFee          int     `json:"takerBaseFee,omitempty"`
+	AcceptingOrders       bool    `json:"acceptingOrders,omitempty"`
+	TeamAID               string  `json:"teamAID,omitempty"`
+	TeamBID               string  `json:"teamBID,omitempty"`
+	UmaBond               string  `json:"umaBond,omitempty"`
+	UmaReward             string  `json:"umaReward,omitempty"`
+	FpmmLive              bool    `json:"fpmmLive,omitempty"`
+	ShortOutcomes         string  `json:"shortOutcomes,omitempty"`
+	AutomaticallyResolved bool    `json:"automaticallyResolved,omitempty"`
+	OneDayPriceChange     float64 `json:"oneDayPriceChange,omitempty"`
+	OneHourPriceChange    float64 `json:"oneHourPriceChange,omitempty"`
+	OneWeekPriceChange    float64 `json:"oneWeekPriceChange,omitempty"`
+	OneMonthPriceChange   float64 `json:"oneMonthPriceChange,omitempty"`
+	OneYearPriceChange    float64 `json:"oneYearPriceChange,omitempty"`
 }
 
 // ParsedTokens builds a Token slice by combining ClobTokenIds and Outcomes.
@@ -277,31 +317,51 @@ type Rewards struct {
 }
 
 type Event struct {
-	ID               string   `json:"id"`
-	Ticker           string   `json:"ticker"`
-	Slug             string   `json:"slug"`
-	Title            string   `json:"title"`
-	Description      string   `json:"description"`
-	StartDate        string   `json:"startDate"`
-	CreationDate     string   `json:"creationDate"`
-	EndDate          string   `json:"endDate"`
-	Image            string   `json:"image"`
-	Icon             string   `json:"icon"`
-	Active           bool     `json:"active"`
-	Closed           bool     `json:"closed"`
-	Archived         bool     `json:"archived"`
-	New              bool     `json:"new"`
-	Featured         bool     `json:"featured"`
-	Restricted       bool     `json:"restricted"`
-	Liquidity        string   `json:"liquidity"`
-	Volume           string   `json:"volume"`
-	Markets          []Market `json:"markets"`
-	NegRisk          bool     `json:"negRisk,omitempty"`
-	EnableNegRisk    bool     `json:"enableNegRisk,omitempty"`
-	NegRiskAugmented bool     `json:"negRiskAugmented,omitempty"`
-	CommentCount     int      `json:"commentCount,omitempty"`
-	CompetitionState string   `json:"competitionState,omitempty"`
-	Cyom             bool     `json:"cyom,omitempty"`
+	ID                string   `json:"id"`
+	Ticker            string   `json:"ticker"`
+	Slug              string   `json:"slug"`
+	Title             string   `json:"title"`
+	Description       string   `json:"description"`
+	StartDate         string   `json:"startDate"`
+	CreationDate      string   `json:"creationDate"`
+	EndDate           string   `json:"endDate"`
+	Image             string   `json:"image"`
+	Icon              string   `json:"icon"`
+	Active            bool     `json:"active"`
+	Closed            bool     `json:"closed"`
+	Archived          bool     `json:"archived"`
+	New               bool     `json:"new"`
+	Featured          bool     `json:"featured"`
+	Restricted        bool     `json:"restricted"`
+	Liquidity         string   `json:"liquidity"`
+	Volume            string   `json:"volume"`
+	Markets           []Market `json:"markets"`
+	NegRisk           bool     `json:"negRisk,omitempty"`
+	EnableNegRisk     bool     `json:"enableNegRisk,omitempty"`
+	NegRiskAugmented  bool     `json:"negRiskAugmented,omitempty"`
+	CommentCount      int      `json:"commentCount,omitempty"`
+	CompetitionState  string   `json:"competitionState,omitempty"`
+	Cyom              bool     `json:"cyom,omitempty"`
+	Subtitle          string   `json:"subtitle,omitempty"`
+	ResolutionSource  string   `json:"resolutionSource,omitempty"`
+	OpenInterest      string   `json:"openInterest,omitempty"`
+	SortBy            string   `json:"sortBy,omitempty"`
+	Category          string   `json:"category,omitempty"`
+	Subcategory       string   `json:"subcategory,omitempty"`
+	IsTemplate        bool     `json:"isTemplate,omitempty"`
+	TemplateVariables string   `json:"templateVariables,omitempty"`
+	PublishedAt       string   `json:"publishedAt,omitempty"`
+	CreatedBy         string   `json:"createdBy,omitempty"`
+	UpdatedBy         string   `json:"updatedBy,omitempty"`
+	CommentsEnabled   bool     `json:"commentsEnabled,omitempty"`
+	Volume24hr        int      `json:"volume24hr,omitempty"`
+	Volume1wk         int      `json:"volume1wk,omitempty"`
+	Volume1mo         int      `json:"volume1mo,omitempty"`
+	Volume1yr         int      `json:"volume1yr,omitempty"`
+	FeaturedImage     string   `json:"featuredImage,omitempty"`
+	DisqusThread      string   `json:"disqusThread,omitempty"`
+	ParentEvent       string   `json:"parentEvent,omitempty"`
+	NegRiskFeeBips    int      `json:"negRiskFeeBips,omitempty"`
 }
 
 type Team struct {

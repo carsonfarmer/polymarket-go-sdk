@@ -146,12 +146,12 @@ func (c *clientImpl) processEvent(raw map[string]interface{}) {
 			}
 			c.dispatchMarketResolved(event)
 		}
-	case "trade":
+	case "trade", "trades":
 		var event TradeEvent
 		if err := json.Unmarshal(msgBytes, &event); err == nil {
 			c.dispatchTrade(event)
 		}
-	case "order":
+	case "order", "orders":
 		var event OrderEvent
 		if err := json.Unmarshal(msgBytes, &event); err == nil {
 			c.dispatchOrder(event)

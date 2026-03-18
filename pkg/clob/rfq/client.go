@@ -139,48 +139,36 @@ func applyRFQFilters(q *url.Values, state RFQState, requestIDs, quoteIDs, market
 		q.Set("state", string(state))
 	}
 	if len(requestIDs) > 0 {
-		joined := strings.Join(requestIDs, ",")
-		q.Set("requestIds", joined)
-		q.Set("request_ids", joined)
+		q.Set("request_ids", strings.Join(requestIDs, ","))
 	}
 	if len(quoteIDs) > 0 {
-		joined := strings.Join(quoteIDs, ",")
-		q.Set("quoteIds", joined)
-		q.Set("quote_ids", joined)
+		q.Set("quote_ids", strings.Join(quoteIDs, ","))
 	}
 	if len(markets) > 0 {
 		q.Set("markets", strings.Join(markets, ","))
 	}
 	if sizeMin != "" {
-		q.Set("sizeMin", sizeMin)
 		q.Set("size_min", sizeMin)
 	}
 	if sizeMax != "" {
-		q.Set("sizeMax", sizeMax)
 		q.Set("size_max", sizeMax)
 	}
 	if sizeUsdcMin != "" {
-		q.Set("sizeUsdcMin", sizeUsdcMin)
 		q.Set("size_usdc_min", sizeUsdcMin)
 	}
 	if sizeUsdcMax != "" {
-		q.Set("sizeUsdcMax", sizeUsdcMax)
 		q.Set("size_usdc_max", sizeUsdcMax)
 	}
 	if priceMin != "" {
-		q.Set("priceMin", priceMin)
 		q.Set("price_min", priceMin)
 	}
 	if priceMax != "" {
-		q.Set("priceMax", priceMax)
 		q.Set("price_max", priceMax)
 	}
 	if sortBy != "" {
-		q.Set("sortBy", string(sortBy))
 		q.Set("sort_by", string(sortBy))
 	}
 	if sortDir != "" {
-		q.Set("sortDir", string(sortDir))
 		q.Set("sort_dir", string(sortDir))
 	}
 }

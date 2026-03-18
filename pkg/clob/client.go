@@ -101,12 +101,18 @@ type Client interface {
 	LastTradePrice(ctx context.Context, req *clobtypes.LastTradePriceRequest) (clobtypes.LastTradePriceResponse, error)
 	// LastTradesPrices retrieves last trade prices for multiple tokens in a batch.
 	LastTradesPrices(ctx context.Context, req *clobtypes.LastTradesPricesRequest) (clobtypes.LastTradesPricesResponse, error)
+	// LastTradesPricesQuery retrieves last trade prices via GET query parameters (max 500 token IDs).
+	LastTradesPricesQuery(ctx context.Context, req *clobtypes.LastTradesPricesQueryRequest) (clobtypes.LastTradesPricesResponse, error)
 	// TickSize retrieves the minimum price increment for a token.
 	TickSize(ctx context.Context, req *clobtypes.TickSizeRequest) (clobtypes.TickSizeResponse, error)
+	// TickSizeByPath retrieves the minimum price increment for a token via path parameter.
+	TickSizeByPath(ctx context.Context, tokenID string) (clobtypes.TickSizeResponse, error)
 	// NegRisk checks if a token belongs to a negative risk market.
 	NegRisk(ctx context.Context, req *clobtypes.NegRiskRequest) (clobtypes.NegRiskResponse, error)
 	// FeeRate retrieves the current fee rate applicable to a token.
 	FeeRate(ctx context.Context, req *clobtypes.FeeRateRequest) (clobtypes.FeeRateResponse, error)
+	// FeeRateByPath retrieves the current fee rate for a token via path parameter.
+	FeeRateByPath(ctx context.Context, tokenID string) (clobtypes.FeeRateResponse, error)
 	// PricesHistory retrieves historical price points for a market (condition ID) or token.
 	PricesHistory(ctx context.Context, req *clobtypes.PricesHistoryRequest) (clobtypes.PricesHistoryResponse, error)
 

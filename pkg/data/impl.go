@@ -360,6 +360,20 @@ func addStringSlice(q url.Values, key string, vals []string) {
 	q.Set(key, strings.Join(filtered, ","))
 }
 
+func addInt64Slice(q url.Values, key string, vals []int64) {
+	if len(vals) == 0 {
+		return
+	}
+	filtered := make([]string, 0, len(vals))
+	for _, v := range vals {
+		filtered = append(filtered, strconv.FormatInt(v, 10))
+	}
+	if len(filtered) == 0 {
+		return
+	}
+	q.Set(key, strings.Join(filtered, ","))
+}
+
 func addInt(q url.Values, key string, val *int) {
 	if val != nil {
 		q.Set(key, strconv.Itoa(*val))
@@ -417,7 +431,7 @@ func applyMarketFilter(q url.Values, filter *MarketFilter) error {
 		addHashSlice(q, "market", filter.Markets)
 	}
 	if len(filter.EventIDs) > 0 {
-		addStringSlice(q, "eventId", filter.EventIDs)
+		addInt64Slice(q, "eventId", filter.EventIDs)
 	}
 	return nil
 }

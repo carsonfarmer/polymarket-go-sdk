@@ -105,14 +105,14 @@ const (
 // MarketFilter restricts queries by markets or events.
 type MarketFilter struct {
 	Markets  []common.Hash
-	EventIDs []string
+	EventIDs []int64
 }
 
 func MarketFilterByMarkets(markets []common.Hash) *MarketFilter {
 	return &MarketFilter{Markets: markets}
 }
 
-func MarketFilterByEventIDs(eventIDs []string) *MarketFilter {
+func MarketFilterByEventIDs(eventIDs []int64) *MarketFilter {
 	return &MarketFilter{EventIDs: eventIDs}
 }
 
@@ -356,7 +356,7 @@ type (
 		Slug               string         `json:"slug"`
 		Icon               string         `json:"icon"`
 		EventSlug          string         `json:"eventSlug"`
-		EventID            *string        `json:"eventId,omitempty"`
+		EventID            *int64         `json:"eventId,omitempty"`
 		Outcome            string         `json:"outcome"`
 		OutcomeIndex       int            `json:"outcomeIndex"`
 		OppositeOutcome    string         `json:"oppositeOutcome"`
@@ -382,6 +382,7 @@ type (
 		OppositeOutcome string         `json:"oppositeOutcome"`
 		OppositeAsset   types.U256     `json:"oppositeAsset"`
 		EndDate         FlexibleTime   `json:"endDate"`
+		NegativeRisk    bool           `json:"negativeRisk,omitempty"`
 	}
 	Trade struct {
 		ProxyWallet           common.Address `json:"proxyWallet"`
@@ -403,6 +404,8 @@ type (
 		ProfileImage          *string        `json:"profileImage,omitempty"`
 		ProfileImageOptimized *string        `json:"profileImageOptimized,omitempty"`
 		TransactionHash       common.Hash    `json:"transactionHash"`
+		MatchTime             *string        `json:"matchTime,omitempty"`
+		Fee                   *types.Decimal `json:"fee,omitempty"`
 	}
 	Activity struct {
 		ProxyWallet           common.Address `json:"proxyWallet"`

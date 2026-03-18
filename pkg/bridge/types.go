@@ -22,14 +22,14 @@ type (
 		BTC string `json:"btc"`
 	}
 	SupportedAssetsResponse struct {
-		SupportedAssets []SupportedAsset `json:"supported_assets"`
+		SupportedAssets []SupportedAsset `json:"supportedAssets"`
 		Note            string           `json:"note,omitempty"`
 	}
 	SupportedAsset struct {
-		ChainID        string `json:"chain_id"`
-		ChainName      string `json:"chain_name"`
+		ChainID        string `json:"chainId"`
+		ChainName      string `json:"chainName"`
 		Token          Token  `json:"token"`
-		MinCheckoutUSD string `json:"min_checkout_usd"`
+		MinCheckoutUSD string `json:"minCheckoutUsd"`
 	}
 	Token struct {
 		Name     string `json:"name"`
@@ -41,13 +41,13 @@ type (
 		Transactions []DepositTransaction `json:"transactions"`
 	}
 	DepositTransaction struct {
-		FromChainID        string `json:"from_chain_id"`
-		FromTokenAddress   string `json:"from_token_address"`
-		FromAmountBaseUnit string `json:"from_amount_base_unit"`
-		ToChainID          string `json:"to_chain_id"`
-		ToTokenAddress     string `json:"to_token_address"`
+		FromChainID        string `json:"fromChainId"`
+		FromTokenAddress   string `json:"fromTokenAddress"`
+		FromAmountBaseUnit string `json:"fromAmountBaseUnit"`
+		ToChainID          string `json:"toChainId"`
+		ToTokenAddress     string `json:"toTokenAddress"`
 		Status             string `json:"status"`
-		TxHash             string `json:"tx_hash,omitempty"`
-		CreatedTimeMS      *int64 `json:"created_time_ms,omitempty"`
+		TxHash             string `json:"txHash,omitempty"`
+		CreatedTimeMS      *int64 `json:"createdTimeMs,omitempty"`
 	}
 )
