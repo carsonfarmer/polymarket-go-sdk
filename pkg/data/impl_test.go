@@ -132,7 +132,7 @@ func TestClosedPositionsMissingUser(t *testing.T) {
 func TestPositionsSuccess(t *testing.T) {
 	user := common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
 	doer := &staticDoer{responses: map[string]string{
-		"/positions": `[{"title":"Test Market","size":"100"}]`,
+		"/positions": `[{"title":"Test Market","size":"100","eventId":"1234"}]`,
 	}}
 	client := NewClient(transport.NewClient(doer, "http://example"))
 	resp, err := client.Positions(context.Background(), &PositionsRequest{User: user})

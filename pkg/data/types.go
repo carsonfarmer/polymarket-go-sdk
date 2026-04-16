@@ -356,7 +356,7 @@ type (
 		Slug               string         `json:"slug"`
 		Icon               string         `json:"icon"`
 		EventSlug          string         `json:"eventSlug"`
-		EventID            *int64         `json:"eventId,omitempty"`
+		EventID            *string        `json:"eventId,omitempty"`
 		Outcome            string         `json:"outcome"`
 		OutcomeIndex       int            `json:"outcomeIndex"`
 		OppositeOutcome    string         `json:"oppositeOutcome"`
