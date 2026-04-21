@@ -352,14 +352,16 @@ type (
 		Count      int             `json:"count"`
 	}
 	CancelResponse struct {
-		Status string `json:"status"`
+		Canceled    []string          `json:"canceled,omitempty"`
+		NotCanceled map[string]string `json:"not_canceled,omitempty"`
 	}
 	CancelAllResponse struct {
-		Status string `json:"status"`
-		Count  int    `json:"count"`
+		Canceled    []string          `json:"canceled,omitempty"`
+		NotCanceled map[string]string `json:"not_canceled,omitempty"`
 	}
 	CancelMarketOrdersResponse struct {
-		Status string `json:"status"`
+		Canceled    []string          `json:"canceled,omitempty"`
+		NotCanceled map[string]string `json:"not_canceled,omitempty"`
 	}
 	TradesResponse struct {
 		Data       []Trade `json:"data"`
