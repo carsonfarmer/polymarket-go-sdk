@@ -32,12 +32,20 @@ func main() {
 		skipWS     = flag.Bool("skip-ws", false, "skip CLOB websocket checks")
 		skipRTDS   = flag.Bool("skip-rtds", false, "skip RTDS checks")
 		strict     = flag.Bool("strict", false, "fail on optional checks")
+		v2         = flag.Bool("v2", false, "use CLOB V2 pre-cutover endpoint (clob-v2.polymarket.com)")
 		tokenID    = flag.String("token", "", "token id for market data checks")
 		marketID   = flag.String("market", "", "market/condition id for price history checks")
 	)
 	flag.Parse()
 
-	client := polymarket.NewClient()
+	var client *polymarket.Client
+	if *v2 {
+		cfg := polymarket.DefaultConfig()
+		cfg.BaseURLs.CLOB = cfg.BaseURLs.CLOBV2
+		client = polymarket.NewClient(polymarket.WithConfig(cfg))
+	} else {
+		client = polymarket.NewClient()
+	}
 	results := make([]checkResult, 0, 32)
 
 	ctx := context.Background()
@@ -79,6 +87,13 @@ func main() {
 		_, err := client.CLOB.SamplingSimplifiedMarkets(ctx, nil)
 		return err
 	}))
+
+	if *v2 {
+		results = append(results, runCheck(ctx, *timeout, "clob.markets_keyset", false, func(ctx context.Context) error {
+			_, err := client.CLOB.MarketsKeyset(ctx, &clobtypes.MarketsKeysetRequest{Limit: 5})
+			return err
+		}))
+	}
 
 	if marketCondition != "" || marketAlt != "" {
 		results = append(results, runCheck(ctx, *timeout, "clob.market", false, func(ctx context.Context) error {
@@ -126,6 +141,12 @@ func main() {
 			_, err := client.CLOB.FeeRate(ctx, &clobtypes.FeeRateRequest{TokenID: token})
 			return err
 		}))
+		if *v2 {
+			results = append(results, runCheck(ctx, *timeout, "clob.clob_market_info", true, func(ctx context.Context) error {
+				_, err := client.CLOB.ClobMarketInfo(ctx, &clobtypes.ClobMarketInfoRequest{ConditionID: marketCondition})
+				return err
+			}))
+		}
 	} else {
 		results = append(results, checkResult{name: "clob.token_dependent", err: fmt.Errorf("missing token id"), optional: true})
 	}

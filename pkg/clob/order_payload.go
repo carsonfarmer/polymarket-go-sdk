@@ -78,21 +78,32 @@ func orderWithSignature(order *clobtypes.SignedOrder) (map[string]interface{}, e
 		return nil, err
 	}
 
-	return map[string]interface{}{
+	payload := map[string]interface{}{
 		"salt":          salt,
 		"maker":         order.Order.Maker.Hex(),
 		"signer":        order.Order.Signer.Hex(),
-		"taker":         order.Order.Taker.Hex(),
 		"tokenId":       u256String(order.Order.TokenID),
 		"makerAmount":   decimalString(order.Order.MakerAmount),
 		"takerAmount":   decimalString(order.Order.TakerAmount),
 		"side":          side,
-		"expiration":    u256String(order.Order.Expiration),
-		"nonce":         u256String(order.Order.Nonce),
-		"feeRateBps":    decimalString(order.Order.FeeRateBps),
 		"signatureType": sigType,
 		"signature":     order.Signature,
-	}, nil
+		// V2 fields
+		"timestamp": order.Order.Timestamp,
+	}
+	if order.Order.Builder != "" {
+		payload["builder"] = order.Order.Builder
+	}
+	if len(order.Order.Metadata) > 0 {
+		payload["metadata"] = order.Order.Metadata
+	}
+	// Legacy fields — emit as zero values for backward compatibility with intermediate infrastructure
+	payload["taker"] = order.Order.Taker.Hex()
+	payload["expiration"] = u256String(order.Order.Expiration)
+	payload["nonce"] = u256String(order.Order.Nonce)
+	payload["feeRateBps"] = decimalString(order.Order.FeeRateBps)
+
+	return payload, nil
 }
 
 func u256String(value types.U256) string {

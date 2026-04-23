@@ -28,7 +28,6 @@ type Client struct {
 	RTDS   rtds.Client
 	CTF    ctf.Client
 
-	builderCfg *auth.BuilderConfig
 	InitErrors []error
 }
 
@@ -123,11 +122,6 @@ func newClient(strict bool, opts ...Option) (*Client, error) {
 		} else {
 			c.CLOBWS = wsClient
 		}
-	}
-
-	// 5. Apply builder attribution if configured
-	if c.builderCfg != nil && c.CLOB != nil {
-		c.CLOB = c.CLOB.WithBuilderConfig(c.builderCfg)
 	}
 
 	if strict && len(c.InitErrors) > 0 {

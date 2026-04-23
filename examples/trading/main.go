@@ -53,13 +53,16 @@ func main() {
 	// Note: This requires valid TokenID and sufficient balance/allowance to succeed on server
 	order := &clobtypes.Order{
 		Maker:       types.Address(signer.Address()),
-		Taker:       common.HexToAddress("0x0000000000000000000000000000000000000000"), // Open order
-		TokenID:     types.U256{Int: big.NewInt(123456789)},                            // Dummy Token ID
+		TokenID:     types.U256{Int: big.NewInt(123456789)}, // Dummy Token ID
 		MakerAmount: decimal.NewFromFloat(10.0),
 		TakerAmount: decimal.NewFromFloat(5.0),
 		Side:        "BUY",
+		Timestamp:   time.Now().UnixMilli(),
+		// Legacy fields kept for wire compatibility but zeroed in V2
+		Taker:       common.HexToAddress("0x0000000000000000000000000000000000000000"),
+		Expiration:  types.U256{Int: big.NewInt(0)},
 		FeeRateBps:  decimal.NewFromInt(0),
-		Nonce:       types.U256{Int: big.NewInt(time.Now().Unix())},
+		Nonce:       types.U256{Int: big.NewInt(0)},
 	}
 
 	fmt.Println("Signing and posting order...")

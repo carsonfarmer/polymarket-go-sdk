@@ -253,7 +253,6 @@ func TestClientHelpers(t *testing.T) {
 		client.SetUserAgent("ua")
 		client.SetUseServerTime(true)
 		client.SetAuth(nil, nil)
-		client.SetBuilderConfig(nil)
 	})
 
 	t.Run("CallWithHeaders", func(t *testing.T) {

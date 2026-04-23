@@ -73,12 +73,14 @@ func handleSign(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return the headers needed by Polymarket
+	// NOTE: Builder HMAC headers are deprecated in CLOB API V2.
+	// V2 uses the `builderCode` field on orders instead.
+	// This endpoint is kept for backward compatibility with V1 infrastructure only.
 	resp := map[string]string{
-		auth.HeaderPolyBuilderAPIKey:     BuilderKey,
-		auth.HeaderPolyBuilderPassphrase: BuilderPassphrase,
-		auth.HeaderPolyBuilderTimestamp:  fmt.Sprintf("%d", req.Timestamp),
-		auth.HeaderPolyBuilderSignature:  sig,
+		"POLY_BUILDER_API_KEY":     BuilderKey,
+		"POLY_BUILDER_PASSPHRASE": BuilderPassphrase,
+		"POLY_BUILDER_TIMESTAMP":  fmt.Sprintf("%d", req.Timestamp),
+		"POLY_BUILDER_SIGNATURE":  sig,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

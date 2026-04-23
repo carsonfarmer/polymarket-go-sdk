@@ -22,7 +22,6 @@ type clientImpl struct {
 	httpClient     *transport.Client
 	signer         auth.Signer
 	apiKey         *auth.APIKey
-	builderCfg     *auth.BuilderConfig
 	signatureType  auth.SignatureType
 	authNonce      *int64
 	funder         *types.Address
@@ -57,7 +56,6 @@ func (c *clientImpl) cloneWithTransport(httpClient *transport.Client) *clientImp
 		httpClient:        httpClient,
 		signer:            c.signer,
 		apiKey:            c.apiKey,
-		builderCfg:        c.builderCfg,
 		signatureType:     c.signatureType,
 		authNonce:         c.authNonce,
 		funder:            c.funder,
@@ -108,7 +106,6 @@ func NewClientWithGeoblock(httpClient *transport.Client, geoblockHost string) Cl
 		authNonce:      nil,
 		funder:         nil,
 		saltGenerator:  nil,
-		// builderCfg is nil by default (Opt-in)
 		rfq:       rfq.NewClient(httpClient),
 		heartbeat: heartbeat.NewClient(httpClient),
 	}
@@ -144,43 +141,12 @@ func (c *clientImpl) WithAuth(signer auth.Signer, apiKey *auth.APIKey) Client {
 	return newC
 }
 
-// WithBuilderConfig sets the builder attribution config.
-func (c *clientImpl) WithBuilderConfig(config *auth.BuilderConfig) Client {
-	newHTTPClient := c.httpClient
-	if newHTTPClient != nil {
-		newHTTPClient = newHTTPClient.Clone()
-		newHTTPClient.SetBuilderConfig(config)
-	}
-	newC := c.cloneWithTransport(newHTTPClient)
-	newC.builderCfg = config
-	return newC
-}
-
-// PromoteToBuilder switches the client into builder attribution mode.
-func (c *clientImpl) PromoteToBuilder(config *auth.BuilderConfig) Client {
-	if config == nil {
-		return c
-	}
-	// Stop heartbeats on the old instance before switching.
-	c.StopHeartbeats()
-	newHTTPClient := c.httpClient
-	if newHTTPClient != nil {
-		newHTTPClient = newHTTPClient.Clone()
-		newHTTPClient.SetBuilderConfig(config)
-	}
-	newC := c.cloneWithTransport(newHTTPClient)
-	newC.builderCfg = config
-	newC.startHeartbeats()
-	return newC
-}
-
 // WithSignatureType sets the default signature type for order signing and balance/rewards queries.
 func (c *clientImpl) WithSignatureType(sigType auth.SignatureType) Client {
 	return &clientImpl{
 		httpClient:        c.httpClient,
 		signer:            c.signer,
 		apiKey:            c.apiKey,
-		builderCfg:        c.builderCfg,
 		signatureType:     sigType,
 		authNonce:         c.authNonce,
 		funder:            c.funder,
@@ -201,7 +167,6 @@ func (c *clientImpl) WithAuthNonce(nonce int64) Client {
 		httpClient:        c.httpClient,
 		signer:            c.signer,
 		apiKey:            c.apiKey,
-		builderCfg:        c.builderCfg,
 		signatureType:     c.signatureType,
 		authNonce:         &nonce,
 		funder:            c.funder,
@@ -222,7 +187,6 @@ func (c *clientImpl) WithFunder(funder types.Address) Client {
 		httpClient:        c.httpClient,
 		signer:            c.signer,
 		apiKey:            c.apiKey,
-		builderCfg:        c.builderCfg,
 		signatureType:     c.signatureType,
 		authNonce:         c.authNonce,
 		funder:            &funder,
@@ -243,7 +207,6 @@ func (c *clientImpl) WithSaltGenerator(gen SaltGenerator) Client {
 		httpClient:        c.httpClient,
 		signer:            c.signer,
 		apiKey:            c.apiKey,
-		builderCfg:        c.builderCfg,
 		signatureType:     c.signatureType,
 		authNonce:         c.authNonce,
 		funder:            c.funder,
@@ -284,7 +247,6 @@ func (c *clientImpl) WithWS(ws ws.Client) Client {
 		httpClient:        c.httpClient,
 		signer:            c.signer,
 		apiKey:            c.apiKey,
-		builderCfg:        c.builderCfg,
 		signatureType:     c.signatureType,
 		authNonce:         c.authNonce,
 		funder:            c.funder,
@@ -304,7 +266,6 @@ func (c *clientImpl) WithHeartbeatInterval(interval time.Duration) Client {
 		httpClient:        c.httpClient,
 		signer:            c.signer,
 		apiKey:            c.apiKey,
-		builderCfg:        c.builderCfg,
 		signatureType:     c.signatureType,
 		authNonce:         c.authNonce,
 		funder:            c.funder,
@@ -463,15 +424,6 @@ func (c *clientImpl) SetNegRisk(tokenID string, negRisk bool) {
 	}
 	c.cache.mu.Lock()
 	c.cache.negRisk[tokenID] = negRisk
-	c.cache.mu.Unlock()
-}
-
-func (c *clientImpl) SetFeeRateBps(tokenID string, feeRateBps int64) {
-	if c.cache == nil || tokenID == "" || feeRateBps <= 0 {
-		return
-	}
-	c.cache.mu.Lock()
-	c.cache.feeRates[tokenID] = feeRateBps
 	c.cache.mu.Unlock()
 }
 

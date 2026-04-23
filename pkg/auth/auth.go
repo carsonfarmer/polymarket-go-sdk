@@ -5,13 +5,10 @@
 package auth
 
 import (
-	"bytes"
-	"context"
 	"crypto/ecdsa"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -119,7 +116,6 @@ var (
 	// Use unified error definitions from pkg/errors
 	ErrMissingSigner          = sdkerrors.ErrMissingSigner
 	ErrMissingCreds           = sdkerrors.ErrMissingCreds
-	ErrMissingBuilderConfig   = sdkerrors.ErrMissingBuilderConfig
 	ErrProxyWalletUnsupported = sdkerrors.ErrProxyWalletUnsupported
 	ErrSafeWalletUnsupported  = sdkerrors.ErrSafeWalletUnsupported
 )
@@ -130,12 +126,8 @@ const (
 	HeaderPolySignature         = "POLY_SIGNATURE"
 	HeaderPolyTimestamp         = "POLY_TIMESTAMP"
 	HeaderPolyNonce             = "POLY_NONCE"
-	HeaderPolyAPIKey            = "POLY_API_KEY"
-	HeaderPolyPassphrase        = "POLY_PASSPHRASE"
-	HeaderPolyBuilderAPIKey     = "POLY_BUILDER_API_KEY"
-	HeaderPolyBuilderPassphrase = "POLY_BUILDER_PASSPHRASE"
-	HeaderPolyBuilderSignature  = "POLY_BUILDER_SIGNATURE"
-	HeaderPolyBuilderTimestamp  = "POLY_BUILDER_TIMESTAMP"
+	HeaderPolyAPIKey     = "POLY_API_KEY"
+	HeaderPolyPassphrase = "POLY_PASSPHRASE"
 )
 
 // PrivateKeySigner implements the Signer interface using a local ECDSA private key.
@@ -272,164 +264,6 @@ func BuildL2Headers(signer Signer, apiKey *APIKey, method, path string, body *st
 	headers.Set(HeaderPolyPassphrase, apiKey.Passphrase)
 	headers.Set(HeaderPolyTimestamp, fmt.Sprintf("%d", timestamp))
 	headers.Set(HeaderPolySignature, sig)
-	return headers, nil
-}
-
-// BuilderCredentials represents credentials for a Builder account.
-type BuilderCredentials struct {
-	Key        string
-	Secret     string
-	Passphrase string
-}
-
-// BuilderHTTPDoer defines an interface for executing HTTP requests for remote signing.
-type BuilderHTTPDoer interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
-// BuilderRemoteConfig configures a remote signing service for builder attribution.
-type BuilderRemoteConfig struct {
-	// Host is the endpoint of the remote signing service.
-	Host string
-	// Token is an optional bearer token for authenticating with the signer.
-	Token string
-	// HTTPClient allows providing a custom client for signing requests.
-	HTTPClient BuilderHTTPDoer
-}
-
-// BuilderConfig holds configuration for either local or remote builder attribution.
-type BuilderConfig struct {
-	Local  *BuilderCredentials
-	Remote *BuilderRemoteConfig
-}
-
-// IsValid returns true if the configuration has sufficient credentials.
-func (c *BuilderConfig) IsValid() bool {
-	if c == nil {
-		return false
-	}
-	if c.Local != nil {
-		return c.Local.Key != "" && c.Local.Secret != "" && c.Local.Passphrase != ""
-	}
-	if c.Remote != nil {
-		return c.Remote.Host != ""
-	}
-	return false
-}
-
-// Headers returns the attribution headers for a given request.
-func (c *BuilderConfig) Headers(ctx context.Context, method, path string, body *string, timestamp int64) (http.Header, error) {
-	if c == nil {
-		return nil, ErrMissingBuilderConfig
-	}
-	if c.Local != nil {
-		return buildBuilderHeadersLocal(c.Local, method, path, body, timestamp)
-	}
-	if c.Remote != nil {
-		return buildBuilderHeadersRemote(ctx, c.Remote, method, path, body, timestamp)
-	}
-	return nil, ErrMissingBuilderConfig
-}
-
-func buildBuilderHeadersLocal(creds *BuilderCredentials, method, path string, body *string, timestamp int64) (http.Header, error) {
-	if creds == nil {
-		return nil, ErrMissingBuilderConfig
-	}
-	if timestamp == 0 {
-		timestamp = time.Now().Unix()
-	}
-	message := fmt.Sprintf("%d%s%s", timestamp, method, path)
-	if body != nil && *body != "" {
-		message += strings.ReplaceAll(*body, "'", "\"")
-	}
-	sig, err := SignHMAC(creds.Secret, message)
-	if err != nil {
-		return nil, err
-	}
-
-	headers := http.Header{}
-	headers.Set(HeaderPolyBuilderAPIKey, creds.Key)
-	headers.Set(HeaderPolyBuilderPassphrase, creds.Passphrase)
-	headers.Set(HeaderPolyBuilderTimestamp, fmt.Sprintf("%d", timestamp))
-	headers.Set(HeaderPolyBuilderSignature, sig)
-	return headers, nil
-}
-
-func buildBuilderHeadersRemote(ctx context.Context, remote *BuilderRemoteConfig, method, path string, body *string, timestamp int64) (http.Header, error) {
-	if remote == nil || remote.Host == "" {
-		return nil, ErrMissingBuilderConfig
-	}
-	if timestamp == 0 {
-		timestamp = time.Now().Unix()
-	}
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	payload := map[string]interface{}{
-		"method":    method,
-		"path":      path,
-		"body":      "",
-		"timestamp": timestamp,
-	}
-	if body != nil {
-		payload["body"] = *body
-	}
-	raw, err := json.Marshal(payload)
-	if err != nil {
-		return nil, fmt.Errorf("marshal builder payload: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, remote.Host, bytes.NewReader(raw))
-	if err != nil {
-		return nil, fmt.Errorf("builder request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	if remote.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+remote.Token)
-	}
-
-	client := remote.HTTPClient
-	if client == nil {
-		client = &http.Client{Timeout: 10 * time.Second}
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("builder request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("builder signer error: status %d", resp.StatusCode)
-	}
-
-	var rawHeaders map[string]string
-	if err := json.NewDecoder(resp.Body).Decode(&rawHeaders); err != nil {
-		return nil, fmt.Errorf("decode builder headers: %w", err)
-	}
-
-	get := func(keys ...string) string {
-		for _, k := range keys {
-			if v, ok := rawHeaders[k]; ok && v != "" {
-				return v
-			}
-		}
-		return ""
-	}
-
-	builderKey := get(HeaderPolyBuilderAPIKey, "poly_builder_api_key", "POLY_BUILDER_API_KEY")
-	builderPass := get(HeaderPolyBuilderPassphrase, "poly_builder_passphrase", "POLY_BUILDER_PASSPHRASE")
-	builderSig := get(HeaderPolyBuilderSignature, "poly_builder_signature", "POLY_BUILDER_SIGNATURE")
-	builderTs := get(HeaderPolyBuilderTimestamp, "poly_builder_timestamp", "POLY_BUILDER_TIMESTAMP")
-
-	if builderKey == "" || builderPass == "" || builderSig == "" || builderTs == "" {
-		return nil, fmt.Errorf("invalid builder headers response")
-	}
-
-	headers := http.Header{}
-	headers.Set(HeaderPolyBuilderAPIKey, builderKey)
-	headers.Set(HeaderPolyBuilderPassphrase, builderPass)
-	headers.Set(HeaderPolyBuilderSignature, builderSig)
-	headers.Set(HeaderPolyBuilderTimestamp, builderTs)
 	return headers, nil
 }
 

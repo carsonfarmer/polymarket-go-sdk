@@ -1,13 +1,9 @@
 package auth
 
 import (
-	"context"
 	"encoding/base64"
 	"fmt"
-	"io"
 	"math/big"
-	"net/http"
-	"strings"
 	"testing"
 	"time"
 
@@ -184,95 +180,6 @@ func TestBuildL1Headers(t *testing.T) {
 	if headers.Get(HeaderPolyTimestamp) == "" {
 		t.Error("missing timestamp header")
 	}
-}
-
-func TestBuilderConfig(t *testing.T) {
-	// Test IsValid
-	empty := &BuilderConfig{}
-	if empty.IsValid() {
-		t.Error("empty config should be invalid")
-	}
-
-	local := &BuilderConfig{
-		Local: &BuilderCredentials{
-			Key:        "k",
-			Secret:     "s",
-			Passphrase: "p",
-		},
-	}
-	if !local.IsValid() {
-		t.Error("local config should be valid")
-	}
-
-	remote := &BuilderConfig{
-		Remote: &BuilderRemoteConfig{
-			Host: "http://localhost",
-		},
-	}
-	if !remote.IsValid() {
-		t.Error("remote config should be valid")
-	}
-
-	// Test Headers Generation (Local)
-	// Mock a valid secret
-	local.Local.Secret = base64.StdEncoding.EncodeToString([]byte("secret"))
-	headers, err := local.Headers(context.Background(), "GET", "/", nil, 0)
-	if err != nil {
-		t.Fatalf("Headers local failed: %v", err)
-	}
-	if headers.Get(HeaderPolyBuilderAPIKey) != "k" {
-		t.Error("missing builder api key")
-	}
-
-	// Remote requires a running server, skipping integration test,
-	// but we can test the fallback if remote host is missing
-	remoteInvalid := &BuilderConfig{
-		Remote: &BuilderRemoteConfig{Host: ""},
-	}
-	_, err = remoteInvalid.Headers(context.Background(), "GET", "/", nil, 0)
-	if err != ErrMissingBuilderConfig {
-		t.Errorf("expected error for invalid remote config, got %v", err)
-	}
-
-	// Test Remote with Mock Client
-	mockResp := &http.Response{
-		StatusCode: 200,
-		Body:       http.NoBody,
-	}
-	// We need a body that decodes to the expected headers
-	// The implementation expects a JSON map
-	// And checks keys like POLY_BUILDER_API_KEY
-	mockBody := `{"POLY_BUILDER_API_KEY": "mock-key", "POLY_BUILDER_PASSPHRASE": "mock-pass", "POLY_BUILDER_SIGNATURE": "mock-sig", "POLY_BUILDER_TIMESTAMP": "123"}`
-	
-	mockResp.Body = io.NopCloser(strings.NewReader(mockBody))
-
-	mockDoer := &mockBuilderDoer{
-		resp: mockResp,
-	}
-
-	remoteMock := &BuilderConfig{
-		Remote: &BuilderRemoteConfig{
-			Host: "http://mock-host",
-			HTTPClient: mockDoer,
-		},
-	}
-
-	headers, err = remoteMock.Headers(context.Background(), "GET", "/", nil, 0)
-	if err != nil {
-		t.Fatalf("Headers remote mock failed: %v", err)
-	}
-	if headers.Get(HeaderPolyBuilderAPIKey) != "mock-key" {
-		t.Errorf("expected mock-key, got %s", headers.Get(HeaderPolyBuilderAPIKey))
-	}
-}
-
-type mockBuilderDoer struct {
-	resp *http.Response
-	err  error
-}
-
-func (m *mockBuilderDoer) Do(req *http.Request) (*http.Response, error) {
-	return m.resp, m.err
 }
 
 func TestClobAuthDomain_HasChainId(t *testing.T) {

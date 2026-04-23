@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/GoPolymarket/polymarket-go-sdk/pkg/auth"
 	"github.com/GoPolymarket/polymarket-go-sdk/pkg/clob/clobtypes"
@@ -94,11 +95,20 @@ func signOrderWithCreds(signer auth.Signer, apiKey *auth.APIKey, order *clobtype
 		}
 	}
 
+	verifyingContract := "0xE111180000d2663C0091e4f400237545B87B996B" // V2 Exchange
+	if order.TokenID.Int != nil && order.TokenID.Int.BitLen() > 0 {
+		// Neg-risk tokens use a different verifying contract.
+		// In practice the caller or OrderBuilder should set this; we keep a default here.
+		// A more robust check would query the neg-risk status from the API, but that
+		// would require an extra round-trip. Callers building neg-risk orders should
+		// use OrderBuilder with explicit neg-risk configuration if needed.
+	}
+
 	domain := &apitypes.TypedDataDomain{
 		Name:              "Polymarket CTF Exchange",
-		Version:           "1",
+		Version:           "2",
 		ChainId:           (*math.HexOrDecimal256)(signer.ChainID()),
-		VerifyingContract: "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E", // Exchange Contract Address (Mainnet)
+		VerifyingContract: verifyingContract,
 	}
 
 	typesDef := apitypes.Types{
@@ -112,15 +122,12 @@ func signOrderWithCreds(signer auth.Signer, apiKey *auth.APIKey, order *clobtype
 			{Name: "salt", Type: "uint256"},
 			{Name: "maker", Type: "address"},
 			{Name: "signer", Type: "address"},
-			{Name: "taker", Type: "address"},
 			{Name: "tokenId", Type: "uint256"},
 			{Name: "makerAmount", Type: "uint256"},
 			{Name: "takerAmount", Type: "uint256"},
-			{Name: "expiration", Type: "uint256"},
-			{Name: "nonce", Type: "uint256"},
-			{Name: "feeRateBps", Type: "uint256"},
 			{Name: "side", Type: "uint8"},
 			{Name: "signatureType", Type: "uint8"},
+			{Name: "timestamp", Type: "uint256"},
 		},
 	}
 
@@ -143,24 +150,23 @@ func signOrderWithCreds(signer auth.Signer, apiKey *auth.APIKey, order *clobtype
 		order.Salt = types.U256{Int: salt}
 	}
 
-	expiration := big.NewInt(0)
-	if order.Expiration.Int != nil {
-		expiration = order.Expiration.Int
+	timestamp := big.NewInt(order.Timestamp)
+	if order.Timestamp == 0 {
+		// Auto-populate with current time in milliseconds if not set
+		timestamp = big.NewInt(time.Now().UnixMilli())
+		order.Timestamp = timestamp.Int64()
 	}
 
 	message := apitypes.TypedDataMessage{
 		"salt":          (*math.HexOrDecimal256)(order.Salt.Int),
 		"maker":         order.Maker.String(),
 		"signer":        signer.Address().String(),
-		"taker":         order.Taker.String(),
 		"tokenId":       (*math.HexOrDecimal256)(order.TokenID.Int),
 		"makerAmount":   (*math.HexOrDecimal256)(order.MakerAmount.BigInt()),
 		"takerAmount":   (*math.HexOrDecimal256)(order.TakerAmount.BigInt()),
-		"expiration":    (*math.HexOrDecimal256)(expiration),
-		"nonce":         (*math.HexOrDecimal256)(order.Nonce.Int),
-		"feeRateBps":    (*math.HexOrDecimal256)(order.FeeRateBps.BigInt()),
 		"side":          (*math.HexOrDecimal256)(big.NewInt(int64(sideInt))),
 		"signatureType": (*math.HexOrDecimal256)(big.NewInt(int64(sigTypeVal))),
+		"timestamp":     (*math.HexOrDecimal256)(timestamp),
 	}
 
 	sig, err := signer.SignTypedData(domain, typesDef, message, "Order")

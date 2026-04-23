@@ -1,7 +1,6 @@
 package polymarket
 
 import (
-	"github.com/GoPolymarket/polymarket-go-sdk/pkg/auth"
 	"github.com/GoPolymarket/polymarket-go-sdk/pkg/bridge"
 	"github.com/GoPolymarket/polymarket-go-sdk/pkg/clob"
 	"github.com/GoPolymarket/polymarket-go-sdk/pkg/clob/ws"
@@ -95,48 +94,4 @@ func WithCTF(client ctf.Client) Option {
 	}
 }
 
-// WithBuilderConfig configures builder attribution using either local or remote signing.
-func WithBuilderConfig(cfg *auth.BuilderConfig) Option {
-	return func(c *Client) {
-		c.builderCfg = cfg
-		if c.CLOB != nil {
-			c.CLOB = c.CLOB.WithBuilderConfig(cfg)
-		}
-	}
-}
 
-// WithBuilderAttribution configures the client to attribute volume to a specific Builder.
-// Use this if you have your own Builder API Key from builders.polymarket.com.
-func WithBuilderAttribution(apiKey, secret, passphrase string) Option {
-	return func(c *Client) {
-		cfg := &auth.BuilderConfig{
-			Local: &auth.BuilderCredentials{
-				Key:        apiKey,
-				Secret:     secret,
-				Passphrase: passphrase,
-			},
-		}
-		c.builderCfg = cfg
-		if c.CLOB != nil {
-			c.CLOB = c.CLOB.WithBuilderConfig(cfg)
-		}
-	}
-}
-
-// WithOfficialGoSDKSupport configures the client to attribute volume to the SDK maintainer.
-// This is enabled by default. Use this option to explicitly restore the official attribution
-// if it was previously overwritten.
-func WithOfficialGoSDKSupport() Option {
-	return func(c *Client) {
-		cfg := &auth.BuilderConfig{
-			Remote: &auth.BuilderRemoteConfig{
-				// This URL matches the default in pkg/clob/impl.go
-				Host: "https://polymarket.zeabur.app/v1/sign-builder",
-			},
-		}
-		c.builderCfg = cfg
-		if c.CLOB != nil {
-			c.CLOB = c.CLOB.WithBuilderConfig(cfg)
-		}
-	}
-}

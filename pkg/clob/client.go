@@ -21,10 +21,6 @@ type Client interface {
 
 	// WithAuth returns a new client instance configured with the provided signer and API credentials.
 	WithAuth(signer auth.Signer, apiKey *auth.APIKey) Client
-	// WithBuilderConfig returns a new client instance configured for builder attribution.
-	WithBuilderConfig(config *auth.BuilderConfig) Client
-	// PromoteToBuilder switches the client into builder attribution mode.
-	PromoteToBuilder(config *auth.BuilderConfig) Client
 	// WithSignatureType sets the default signature type used for order signing and balance/rewards requests.
 	WithSignatureType(sigType auth.SignatureType) Client
 	// WithAuthNonce sets the default nonce used when creating/deriving API keys.
@@ -68,8 +64,14 @@ type Client interface {
 	Markets(ctx context.Context, req *clobtypes.MarketsRequest) (clobtypes.MarketsResponse, error)
 	// MarketsAll automatically iterates through all pages to retrieve all available markets.
 	MarketsAll(ctx context.Context, req *clobtypes.MarketsRequest) ([]clobtypes.Market, error)
+	// MarketsKeyset retrieves markets using cursor-based keyset pagination (V2).
+	MarketsKeyset(ctx context.Context, req *clobtypes.MarketsKeysetRequest) (clobtypes.MarketsKeysetResponse, error)
+	// MarketsKeysetAll automatically iterates through all pages using keyset pagination (V2).
+	MarketsKeysetAll(ctx context.Context, req *clobtypes.MarketsKeysetRequest) ([]clobtypes.Market, error)
 	// Market retrieves detailed information for a single market by its ID.
 	Market(ctx context.Context, id string) (clobtypes.MarketResponse, error)
+	// ClobMarketInfo retrieves market-level parameters including fees and tick sizes (V2).
+	ClobMarketInfo(ctx context.Context, req *clobtypes.ClobMarketInfoRequest) (clobtypes.ClobMarketInfoResponse, error)
 	// SimplifiedMarkets retrieves a simplified view of available markets.
 	SimplifiedMarkets(ctx context.Context, req *clobtypes.MarketsRequest) (clobtypes.MarketsResponse, error)
 	// SamplingMarkets retrieves a sampled list of markets.
@@ -124,8 +126,6 @@ type Client interface {
 	SetTickSize(tokenID string, tickSize float64)
 	// SetNegRisk manually populates the negative risk cache for a token.
 	SetNegRisk(tokenID string, negRisk bool)
-	// SetFeeRateBps manually populates the fee rate cache for a token.
-	SetFeeRateBps(tokenID string, feeRateBps int64)
 
 	// -- Order & Trade Management --
 
