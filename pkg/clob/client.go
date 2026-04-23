@@ -64,10 +64,6 @@ type Client interface {
 	Markets(ctx context.Context, req *clobtypes.MarketsRequest) (clobtypes.MarketsResponse, error)
 	// MarketsAll automatically iterates through all pages to retrieve all available markets.
 	MarketsAll(ctx context.Context, req *clobtypes.MarketsRequest) ([]clobtypes.Market, error)
-	// MarketsKeyset retrieves markets using cursor-based keyset pagination (V2).
-	MarketsKeyset(ctx context.Context, req *clobtypes.MarketsKeysetRequest) (clobtypes.MarketsKeysetResponse, error)
-	// MarketsKeysetAll automatically iterates through all pages using keyset pagination (V2).
-	MarketsKeysetAll(ctx context.Context, req *clobtypes.MarketsKeysetRequest) ([]clobtypes.Market, error)
 	// Market retrieves detailed information for a single market by its ID.
 	Market(ctx context.Context, id string) (clobtypes.MarketResponse, error)
 	// ClobMarketInfo retrieves market-level parameters including fees and tick sizes (V2).

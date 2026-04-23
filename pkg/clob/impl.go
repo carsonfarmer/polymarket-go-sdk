@@ -337,7 +337,7 @@ func (c *clientImpl) startHeartbeats() {
 
 func (c *clientImpl) Health(ctx context.Context) (string, error) {
 	var resp healthResponse
-	err := c.httpClient.Get(ctx, "/", nil, &resp)
+	err := c.httpClient.Get(ctx, "/ok", nil, &resp)
 	if err != nil {
 		return "DOWN", mapError(err)
 	}

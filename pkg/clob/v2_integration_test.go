@@ -44,15 +44,17 @@ func TestV2Public_Time(t *testing.T) {
 }
 
 func TestV2Public_Health(t *testing.T) {
-	// clob-v2 currently returns 404 for /health; use /time as a liveness proxy.
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	_, err := newV2Client(t).Time(ctx)
+	status, err := newV2Client(t).Health(ctx)
 	if err != nil {
-		t.Fatalf("liveness check (/time): %v", err)
+		t.Fatalf("Health: %v", err)
 	}
-	t.Log("liveness check passed")
+	if status != "OK" {
+		t.Fatalf("expected OK, got %s", status)
+	}
+	t.Logf("health: %s", status)
 }
 
 func TestV2Public_Markets(t *testing.T) {
@@ -70,11 +72,7 @@ func TestV2Public_Markets(t *testing.T) {
 	t.Logf("got %d markets", len(resp.Data))
 }
 
-func TestV2Public_MarketsKeyset(t *testing.T) {
-	// UPSTREAM BUG: /markets/keyset is currently routed as /markets/{id} with id="keyset",
-	// returning {"error":"market not found"}. Skip until Polymarket fixes the routing.
-	t.Skip("skipped: upstream API routing bug for /markets/keyset (returns 'market not found')")
-}
+
 
 func TestV2Public_Market(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

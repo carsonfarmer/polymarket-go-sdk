@@ -34,60 +34,6 @@ func (c *clientImpl) Markets(ctx context.Context, req *clobtypes.MarketsRequest)
 	return resp, mapError(err)
 }
 
-func (c *clientImpl) MarketsKeyset(ctx context.Context, req *clobtypes.MarketsKeysetRequest) (clobtypes.MarketsKeysetResponse, error) {
-	q := url.Values{}
-	if req != nil {
-		if req.Limit > 0 {
-			q.Set("limit", strconv.Itoa(req.Limit))
-		}
-		if req.Cursor != "" {
-			q.Set("cursor", req.Cursor)
-		}
-		if req.Active != nil {
-			q.Set("active", strconv.FormatBool(*req.Active))
-		}
-		if req.Closed != nil {
-			q.Set("closed", strconv.FormatBool(*req.Closed))
-		}
-		if req.AssetID != "" {
-			q.Set("asset_id", req.AssetID)
-		}
-	}
-
-	var resp clobtypes.MarketsKeysetResponse
-	err := c.httpClient.Get(ctx, "/markets/keyset", q, &resp)
-	return resp, mapError(err)
-}
-
-func (c *clientImpl) MarketsKeysetAll(ctx context.Context, req *clobtypes.MarketsKeysetRequest) ([]clobtypes.Market, error) {
-	var results []clobtypes.Market
-	cursor := clobtypes.InitialCursor
-	if req != nil && req.Cursor != "" {
-		cursor = req.Cursor
-	}
-
-	for cursor != clobtypes.EndCursor {
-		nextReq := clobtypes.MarketsKeysetRequest{}
-		if req != nil {
-			nextReq = *req
-		}
-		nextReq.Cursor = cursor
-
-		resp, err := c.MarketsKeyset(ctx, &nextReq)
-		if err != nil {
-			return nil, err
-		}
-		results = append(results, resp.Markets...)
-
-		if resp.NextCursor == "" || resp.NextCursor == cursor {
-			break
-		}
-		cursor = resp.NextCursor
-	}
-
-	return results, nil
-}
-
 func (c *clientImpl) MarketsAll(ctx context.Context, req *clobtypes.MarketsRequest) ([]clobtypes.Market, error) {
 	var results []clobtypes.Market
 	cursor := clobtypes.InitialCursor

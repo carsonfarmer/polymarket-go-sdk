@@ -88,13 +88,6 @@ func main() {
 		return err
 	}))
 
-	if *v2 {
-		results = append(results, runCheck(ctx, *timeout, "clob.markets_keyset", false, func(ctx context.Context) error {
-			_, err := client.CLOB.MarketsKeyset(ctx, &clobtypes.MarketsKeysetRequest{Limit: 5})
-			return err
-		}))
-	}
-
 	if marketCondition != "" || marketAlt != "" {
 		results = append(results, runCheck(ctx, *timeout, "clob.market", false, func(ctx context.Context) error {
 			id := firstNonEmpty(marketCondition, marketAlt)
