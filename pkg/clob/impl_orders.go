@@ -25,7 +25,17 @@ func (c *clientImpl) CreateOrder(ctx context.Context, order *clobtypes.Order) (c
 }
 
 func (c *clientImpl) CreateOrderWithOptions(ctx context.Context, order *clobtypes.Order, opts *clobtypes.OrderOptions) (clobtypes.OrderResponse, error) {
-	signed, err := c.signOrder(order)
+	negRisk := false
+	if opts != nil && opts.NegRisk != nil {
+		negRisk = *opts.NegRisk
+	} else if order != nil && order.TokenID.Int != nil {
+		// Auto-detect neg-risk status from API cache or fetch it.
+		resp, err := c.NegRisk(ctx, &clobtypes.NegRiskRequest{TokenID: order.TokenID.Int.String()})
+		if err == nil {
+			negRisk = resp.NegRisk
+		}
+	}
+	signed, err := c.signOrder(order, negRisk)
 	if err != nil {
 		return clobtypes.OrderResponse{}, err
 	}
@@ -44,20 +54,27 @@ func (c *clientImpl) CreateOrderFromSignable(ctx context.Context, order *clobtyp
 	opts := &clobtypes.OrderOptions{
 		OrderType: order.OrderType,
 		PostOnly:  order.PostOnly,
+		NegRisk:   order.NegRisk,
 	}
 	return c.CreateOrderWithOptions(ctx, order.Order, opts)
 }
 
-func (c *clientImpl) signOrder(order *clobtypes.Order) (*clobtypes.SignedOrder, error) {
-	return signOrderWithCreds(c.signer, c.apiKey, order, &c.signatureType, c.funder, c.saltGenerator)
+func (c *clientImpl) signOrder(order *clobtypes.Order, negRisk bool) (*clobtypes.SignedOrder, error) {
+	return signOrderWithCreds(c.signer, c.apiKey, order, &c.signatureType, c.funder, c.saltGenerator, negRisk)
 }
 
 // SignOrder builds an EIP-712 signature for the given order without posting it.
+// For neg-risk tokens, use SignOrderNegRisk or set NegRisk via OrderBuilder.
 func SignOrder(signer auth.Signer, apiKey *auth.APIKey, order *clobtypes.Order) (*clobtypes.SignedOrder, error) {
-	return signOrderWithCreds(signer, apiKey, order, nil, nil, nil)
+	return signOrderWithCreds(signer, apiKey, order, nil, nil, nil, false)
 }
 
-func signOrderWithCreds(signer auth.Signer, apiKey *auth.APIKey, order *clobtypes.Order, sigType *auth.SignatureType, funder *types.Address, saltGen SaltGenerator) (*clobtypes.SignedOrder, error) {
+// SignOrderNegRisk builds an EIP-712 signature using the neg-risk exchange contract.
+func SignOrderNegRisk(signer auth.Signer, apiKey *auth.APIKey, order *clobtypes.Order) (*clobtypes.SignedOrder, error) {
+	return signOrderWithCreds(signer, apiKey, order, nil, nil, nil, true)
+}
+
+func signOrderWithCreds(signer auth.Signer, apiKey *auth.APIKey, order *clobtypes.Order, sigType *auth.SignatureType, funder *types.Address, saltGen SaltGenerator, negRisk bool) (*clobtypes.SignedOrder, error) {
 	if signer == nil {
 		return nil, auth.ErrMissingSigner
 	}
@@ -96,12 +113,8 @@ func signOrderWithCreds(signer auth.Signer, apiKey *auth.APIKey, order *clobtype
 	}
 
 	verifyingContract := "0xE111180000d2663C0091e4f400237545B87B996B" // V2 Exchange
-	if order.TokenID.Int != nil && order.TokenID.Int.BitLen() > 0 {
-		// Neg-risk tokens use a different verifying contract.
-		// In practice the caller or OrderBuilder should set this; we keep a default here.
-		// A more robust check would query the neg-risk status from the API, but that
-		// would require an extra round-trip. Callers building neg-risk orders should
-		// use OrderBuilder with explicit neg-risk configuration if needed.
+	if negRisk {
+		verifyingContract = "0xe2222d279d744050d28e00520010520000310F59" // V2 NegRisk Exchange
 	}
 
 	domain := &apitypes.TypedDataDomain{

@@ -136,11 +136,15 @@ type (
 		Order     *Order    `json:"order"`
 		OrderType OrderType `json:"order_type"`
 		PostOnly  *bool     `json:"post_only,omitempty"`
+		NegRisk   *bool     `json:"-"`
 	}
 	OrderOptions struct {
 		OrderType OrderType
 		PostOnly  *bool
 		DeferExec *bool
+		// NegRisk, when true, uses the neg-risk exchange verifying contract for signing.
+		// When nil, the client will auto-detect via the API when possible.
+		NegRisk *bool
 	}
 	SignedOrder struct {
 		Order     Order  `json:"order"`

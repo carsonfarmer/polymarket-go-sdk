@@ -37,6 +37,7 @@ type OrderBuilder struct {
 	postOnly      *bool
 	builderCode   string // V2 builder attribution
 	metadata      string // V2 metadata (bytes32 hex)
+	negRisk       bool   // V2 neg-risk market flag
 
 	saltGenerator SaltGenerator
 
@@ -133,6 +134,13 @@ func (b *OrderBuilder) Metadata(metadata string) *OrderBuilder {
 	return b
 }
 
+// NegRisk marks the order as belonging to a neg-risk market, which uses a
+// different EIP-712 verifying contract. When not set, the client auto-detects.
+func (b *OrderBuilder) NegRisk(negRisk bool) *OrderBuilder {
+	b.negRisk = negRisk
+	return b
+}
+
 // Maker overrides the maker address.
 func (b *OrderBuilder) Maker(maker common.Address) *OrderBuilder {
 	b.maker = &maker
@@ -222,6 +230,7 @@ func (b *OrderBuilder) BuildSignableWithContext(ctx context.Context) (*clobtypes
 		Order:     order,
 		OrderType: orderType,
 		PostOnly:  b.postOnly,
+		NegRisk:   &b.negRisk,
 	}, nil
 }
 
@@ -383,6 +392,7 @@ func (b *OrderBuilder) BuildMarketWithContext(ctx context.Context) (*clobtypes.S
 	return &clobtypes.SignableOrder{
 		Order:     order,
 		OrderType: orderType,
+		NegRisk:   &b.negRisk,
 	}, nil
 }
 

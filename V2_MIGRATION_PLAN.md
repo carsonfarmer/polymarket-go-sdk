@@ -25,7 +25,7 @@ Polymarket is shipping a coordinated V2 upgrade: new Exchange contracts, rewritt
 | **Signed struct fields** | `salt, maker, signer, taker, tokenId, makerAmount, takerAmount, expiration, nonce, feeRateBps, side, signatureType` | Same **minus** `taker, expiration, nonce, feeRateBps` **plus** `timestamp, metadata, builder` |
 | **POST body** | V1 fields | V1 zeroed fields **+** `timestamp`, `metadata`, `builder` |
 | **Collateral** | USDC.e | pUSD |
-| **Markets pagination** | `GET /markets` with `cursor`/`limit` | `GET /markets/keyset` recommended (cursor-based, `"markets"` wrapper key). Old endpoint deprecated but still works. |
+| **Markets pagination** | `GET /markets` with `cursor`/`limit` | `GET /markets` now uses cursor-based pagination with `next_cursor` (V2). The `/markets/keyset` endpoint mentioned in the Apr 10 changelog is not yet deployed. |
 | **`closed` default** | `closed` defaults to `true` (includes closed markets) | `closed` defaults to `false` (Apr 9, 2026) |
 | **Fee info source** | `/fee-rate` endpoint | `feeSchedule` object inside market response (Mar 31, 2026) |
 
@@ -46,7 +46,7 @@ Polymarket is shipping a coordinated V2 upgrade: new Exchange contracts, rewritt
 5. **`FeeRateBps`** is fetched and embedded into every order by `OrderBuilder`. V2 rejects orders with non-zero `feeRateBps` in the signed struct.
 6. **Builder flow** (`auth.BuilderConfig`, HMAC headers) is pervasive in `pkg/auth/auth.go` and `pkg/transport/transport.go`. V2 removes all builder HMAC headers.
 7. **No `ClobMarketInfo` endpoint** exists. V2 introduces this as the canonical way to read per-market parameters (tick size, fees, etc.).
-8. **`MarketsResponse`** only unmarshals `"data"` as the array key. The new `GET /markets/keyset` endpoint uses `"markets"` (Apr 10, 2026).
+8. **`MarketsResponse`** only unmarshals `"data"` as the array key. The V2 `/markets` endpoint continues to use `"data"`; the `/markets/keyset` endpoint (Apr 10 changelog) is not yet deployed. |
 9. **`MarketsRequest`** lacks a `Closed` field, but the API now defaults `closed=false` (Apr 9, 2026). Users who relied on the old default will see different results.
 10. **`Market`** struct has no `FeeCurve` field. V2 market objects may embed fee information; `ClobMarketInfo` is the canonical source (Mar 31, 2026).
 
@@ -221,32 +221,14 @@ type FeeCurve struct {
 - Remove `SetFeeRateBps` cache mutation from `clientImpl` (or keep as read-only cache).
 - Update `OrderBuilder` to stop consulting `FeeRate` when constructing orders.
 
-#### 3.10 `pkg/clob/impl_market.go` — Markets pagination & keyset endpoint
+#### 3.10 `pkg/clob/impl_market.go` — Markets pagination
 
-**Changelog finding (Apr 10, 2026):** New `GET /markets/keyset` replaces offset-based pagination. Wrapper response uses `"markets"` instead of `"data"`. Same filters, same item shape.
+**Changelog finding (Apr 10, 2026):** The changelog mentions `GET /markets/keyset` as a new cursor-based pagination endpoint. However, this endpoint is **not yet deployed** on either `clob-v2.polymarket.com` or `clob.polymarket.com`, and the official TypeScript SDK (`clob-client-v2`) does not use it. The existing `GET /markets` endpoint already supports cursor-based pagination with `next_cursor` on V2.
 
 **Changes:**
-1. Add `MarketsKeyset` to `Client` interface:
-   ```go
-   MarketsKeyset(ctx context.Context, req *clobtypes.MarketsKeysetRequest) (clobtypes.MarketsKeysetResponse, error)
-   ```
-2. Add request/response types:
-   ```go
-   type MarketsKeysetRequest struct {
-       Limit       int    `json:"limit,omitempty"`
-       AfterCursor string `json:"after_cursor,omitempty"`
-       Active      *bool  `json:"active,omitempty"`
-       AssetID     string `json:"asset_id,omitempty"`
-       Closed      *bool  `json:"closed,omitempty"`
-   }
-   type MarketsKeysetResponse struct {
-       Markets    []Market `json:"markets"`
-       NextCursor string   `json:"next_cursor"`
-       Limit      int      `json:"limit"`
-       Count      int      `json:"count"`
-   }
-   ```
-3. Harden `MarketsResponse.UnmarshalJSON` to accept both `"data"` and `"markets"` as the array key. This lets `Markets()` tolerate either endpoint shape.
+1. ~~Add `MarketsKeyset` to `Client` interface~~ — **Removed**: endpoint not deployed.
+2. Add `Closed` filter to `MarketsRequest` (V2 supports filtering by closed status).
+3. Harden `MarketsResponse.UnmarshalJSON` to accept both `"data"` and `"markets"` as the array key. This future-proofs `Markets()` if the wrapper key ever changes.
 4. Add `Closed *bool` to `MarketsRequest` to match the Apr 9 API change.
 
 #### 3.11 `pkg/clob/clobtypes/types.go` — Market struct additions
@@ -432,7 +414,7 @@ func TestV2PublicEndpoints(t *testing.T) {
     t.Run("Time", func(t *testing.T) { /* call Time, assert ts > 0 */ })
     t.Run("Health", func(t *testing.T) { /* call Health */ })
     t.Run("Markets", func(t *testing.T) { /* Markets(limit=5) */ })
-    t.Run("MarketsKeyset", func(t *testing.T) { /* MarketsKeyset(limit=5) */ })
+    // t.Run("MarketsKeyset", ...) — removed: endpoint not deployed on clob-v2
     t.Run("OrderBook", func(t *testing.T) { /* OrderBook(tokenID) */ })
     t.Run("Midpoint", func(t *testing.T) { /* Midpoint(tokenID) */ })
     t.Run("Price", func(t *testing.T) { /* Price BUY/SELL */ })
@@ -571,7 +553,7 @@ After all V2 changes, run the existing unit test suite (`go test ./...`) and ens
 | 6 | Remove `FeeRateBps` from `OrderBuilder`; remove `Nonce` builder method; auto-gen `Timestamp` | Medium | 3h |
 | 7 | Add `BuilderCode` to `OrderBuilder`; remove `BuilderConfig` / HMAC from `auth` and `transport` | Medium | 4h |
 | 8 | Add `ClobMarketInfo` endpoint with defensive unmarshaling | Low | 2h |
-| 9 | Add `MarketsKeyset` endpoint; harden `MarketsResponse` for `"markets"` wrapper | Low | 2h |
+| 9 | ~~Add `MarketsKeyset` endpoint~~; harden `MarketsResponse` for `"markets"` wrapper | Low | 1h |
 | 10 | Add `FeeCurve` to `Market`; add `Closed` to `MarketsRequest` | Low | 1h |
 | 11 | Harden all response types (`UnmarshalJSON` fallbacks) | Low | 3h |
 | 12 | Update WS event types with `omitempty` for new/missing fields | Low | 1h |
@@ -632,7 +614,7 @@ Based on [docs.polymarket.com/changelog](https://docs.polymarket.com/changelog) 
 |------|--------|----------------|
 | Apr 21, 2026 | Relayer `POST /submit` returns immediately without `transactionHash` | No direct impact (SDK does not use relayer API), but note for future bridge/relayer integrations. |
 | Apr 17, 2026 | V2 go-live date confirmed; `clob.polymarket.com` auto-switches | Confirms base URL strategy: keep default, add V2 override for testing. |
-| Apr 10, 2026 | `GET /markets/keyset` and `GET /events/keyset` added | Add `MarketsKeyset` method; harden `MarketsResponse` for `"markets"` wrapper. |
+| Apr 10, 2026 | `GET /markets/keyset` and `GET /events/keyset` mentioned in changelog | Endpoint not yet deployed; `MarketsKeyset` removed from interface. `MarketsResponse` hardened for `"markets"` wrapper for future compatibility. |
 | Apr 9, 2026 | `GET /markets` defaults to `closed=false` | Add `Closed *bool` to `MarketsRequest`. |
 | Mar 31, 2026 | Fees calculated from `feeSchedule` object within market | Add `FeeCurve` to `Market` struct; `ClobMarketInfo` is canonical source. |
 | Mar 30, 2026 | Fee Structure V2: per-category rates | Reinforces that fees are dynamic and market-specific. |
@@ -652,7 +634,7 @@ Based on [docs.polymarket.com/changelog](https://docs.polymarket.com/changelog) 
 - [x] `OrderBuilder` supports `BuilderCode`
 - [x] `BuilderConfig` / HMAC headers fully removed from `auth` and `transport`
 - [x] `ClobMarketInfo` endpoint added with defensive unmarshaling
-- [x] `MarketsKeyset` endpoint added; `MarketsResponse` hardened for `"markets"` wrapper
+- [x] ~~`MarketsKeyset` endpoint added~~ — **removed**: endpoint not deployed on clob-v2; `MarketsResponse` hardened for `"markets"` wrapper
 - [x] `Market.FeeCurve` added; `MarketsRequest.Closed` added
 - [x] Default base URL kept as `clob.polymarket.com` (auto-switches on cutover)
 - [x] All response types hardened against unexpected fields
