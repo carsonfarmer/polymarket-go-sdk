@@ -128,6 +128,8 @@ func signOrderWithCreds(signer auth.Signer, apiKey *auth.APIKey, order *clobtype
 			{Name: "side", Type: "uint8"},
 			{Name: "signatureType", Type: "uint8"},
 			{Name: "timestamp", Type: "uint256"},
+			{Name: "metadata", Type: "bytes32"},
+			{Name: "builder", Type: "bytes32"},
 		},
 	}
 
@@ -157,6 +159,15 @@ func signOrderWithCreds(signer auth.Signer, apiKey *auth.APIKey, order *clobtype
 		order.Timestamp = timestamp.Int64()
 	}
 
+	metadata := order.Metadata
+	if metadata == "" {
+		metadata = "0x0000000000000000000000000000000000000000000000000000000000000000"
+	}
+	builder := order.Builder
+	if builder == "" {
+		builder = "0x0000000000000000000000000000000000000000000000000000000000000000"
+	}
+
 	message := apitypes.TypedDataMessage{
 		"salt":          (*math.HexOrDecimal256)(order.Salt.Int),
 		"maker":         order.Maker.String(),
@@ -167,6 +178,8 @@ func signOrderWithCreds(signer auth.Signer, apiKey *auth.APIKey, order *clobtype
 		"side":          (*math.HexOrDecimal256)(big.NewInt(int64(sideInt))),
 		"signatureType": (*math.HexOrDecimal256)(big.NewInt(int64(sigTypeVal))),
 		"timestamp":     (*math.HexOrDecimal256)(timestamp),
+		"metadata":      metadata,
+		"builder":       builder,
 	}
 
 	sig, err := signer.SignTypedData(domain, typesDef, message, "Order")

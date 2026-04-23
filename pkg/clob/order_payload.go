@@ -91,12 +91,16 @@ func orderWithSignature(order *clobtypes.SignedOrder) (map[string]interface{}, e
 		// V2 fields
 		"timestamp": order.Order.Timestamp,
 	}
-	if order.Order.Builder != "" {
-		payload["builder"] = order.Order.Builder
+	metadata := order.Order.Metadata
+	if metadata == "" {
+		metadata = "0x0000000000000000000000000000000000000000000000000000000000000000"
 	}
-	if len(order.Order.Metadata) > 0 {
-		payload["metadata"] = order.Order.Metadata
+	payload["metadata"] = metadata
+	builder := order.Order.Builder
+	if builder == "" {
+		builder = "0x0000000000000000000000000000000000000000000000000000000000000000"
 	}
+	payload["builder"] = builder
 	// Legacy fields — emit as zero values for backward compatibility with intermediate infrastructure
 	payload["taker"] = order.Order.Taker.Hex()
 	payload["expiration"] = u256String(order.Order.Expiration)

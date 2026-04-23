@@ -464,23 +464,46 @@ type (
 // Auxiliary types.
 type (
 	Market struct {
-		ID             string        `json:"id"`
-		Question       string        `json:"question"`
-		ConditionID    string        `json:"condition_id"`
-		Slug           string        `json:"slug"`
-		Resolution     string        `json:"resolution"`
-		EndDate        string        `json:"end_date"`
-		Tokens         []MarketToken `json:"tokens"`
-		Active         bool          `json:"active"`
-		Closed         bool          `json:"closed"`
-		Volume         string        `json:"volume,omitempty"`
-		Liquidity      string        `json:"liquidity,omitempty"`
-		Volume24hr     string        `json:"volume24hr,omitempty"`
-		Spread         string        `json:"spread,omitempty"`
-		BestBid        string        `json:"bestBid,omitempty"`
-		BestAsk        string        `json:"bestAsk,omitempty"`
-		LastTradePrice string        `json:"lastTradePrice,omitempty"`
-		FeeCurve       *FeeCurve     `json:"fee_curve,omitempty"`
+		// V2 API uses condition_id as the canonical identifier; id is legacy.
+		ID                    string        `json:"id,omitempty"`
+		Question              string        `json:"question"`
+		ConditionID           string        `json:"condition_id"`
+		QuestionID            string        `json:"question_id,omitempty"`
+		Description           string        `json:"description,omitempty"`
+		Slug                  string        `json:"market_slug,omitempty"`
+		Resolution            string        `json:"resolution,omitempty"`
+		EndDate               string        `json:"end_date_iso,omitempty"`
+		GameStartTime         *string       `json:"game_start_time,omitempty"`
+		Tokens                []MarketToken `json:"tokens"`
+		Tags                  []string      `json:"tags,omitempty"`
+		Active                bool          `json:"active"`
+		Closed                bool          `json:"closed"`
+		Archived              bool          `json:"archived,omitempty"`
+		EnableOrderBook       bool          `json:"enable_order_book,omitempty"`
+		AcceptingOrders       bool          `json:"accepting_orders,omitempty"`
+		AcceptingOrderTimestamp *string     `json:"accepting_order_timestamp,omitempty"`
+		MinimumOrderSize      float64       `json:"minimum_order_size,omitempty"`
+		MinimumTickSize       float64       `json:"minimum_tick_size,omitempty"`
+		SecondsDelay          int64         `json:"seconds_delay,omitempty"`
+		FPMM                  string        `json:"fpmm,omitempty"`
+		MakerBaseFee          int64         `json:"maker_base_fee,omitempty"`
+		TakerBaseFee          int64         `json:"taker_base_fee,omitempty"`
+		NotificationsEnabled  bool          `json:"notifications_enabled,omitempty"`
+		NegRisk               bool          `json:"neg_risk,omitempty"`
+		NegRiskMarketID       string        `json:"neg_risk_market_id,omitempty"`
+		NegRiskRequestID      string        `json:"neg_risk_request_id,omitempty"`
+		Icon                  string        `json:"icon,omitempty"`
+		Image                 string        `json:"image,omitempty"`
+		Is50_50Outcome        bool          `json:"is_50_50_outcome,omitempty"`
+		// Legacy fields — no longer returned by V2 but kept for compatibility.
+		Volume         string    `json:"volume,omitempty"`
+		Liquidity      string    `json:"liquidity,omitempty"`
+		Volume24hr     string    `json:"volume24hr,omitempty"`
+		Spread         string    `json:"spread,omitempty"`
+		BestBid        string    `json:"bestBid,omitempty"`
+		BestAsk        string    `json:"bestAsk,omitempty"`
+		LastTradePrice string    `json:"lastTradePrice,omitempty"`
+		FeeCurve       *FeeCurve `json:"fee_curve,omitempty"`
 	}
 
 	FeeCurve struct {
@@ -526,8 +549,8 @@ type (
 		Timestamp     int64         `json:"timestamp,omitempty"`      // V2: ms since epoch
 		// V2 builder attribution (replaces HMAC headers)
 		Builder string `json:"builder,omitempty"` // bytes32 hex string
-		// Metadata for GTD orders and extensions (not signed)
-		Metadata map[string]interface{} `json:"metadata,omitempty"`
+		// Metadata is a bytes32 hex string (V2). Default to zero bytes32 if empty.
+		Metadata string `json:"metadata,omitempty"`
 		// Legacy fields — kept for wire compatibility but zeroed in V2
 		Taker      types.Address `json:"taker"`
 		Expiration types.U256    `json:"expiration"`

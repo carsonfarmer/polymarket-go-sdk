@@ -36,6 +36,7 @@ type OrderBuilder struct {
 	signatureType *auth.SignatureType
 	postOnly      *bool
 	builderCode   string // V2 builder attribution
+	metadata      string // V2 metadata (bytes32 hex)
 
 	saltGenerator SaltGenerator
 
@@ -123,6 +124,12 @@ func (b *OrderBuilder) TickSize(tickSize float64) *OrderBuilder {
 // BuilderCode sets the builder attribution code (bytes32 hex string) for V2 orders.
 func (b *OrderBuilder) BuilderCode(code string) *OrderBuilder {
 	b.builderCode = code
+	return b
+}
+
+// Metadata sets the order metadata (bytes32 hex string) for V2 orders.
+func (b *OrderBuilder) Metadata(metadata string) *OrderBuilder {
+	b.metadata = metadata
 	return b
 }
 
@@ -367,11 +374,10 @@ func (b *OrderBuilder) BuildMarketWithContext(ctx context.Context) (*clobtypes.S
 		SignatureType: &sigType,
 		Timestamp:     time.Now().UnixMilli(),
 		Builder:       b.builderCode,
+		Metadata:      b.metadata,
 	}
 	if b.expiration != nil && b.expiration.Sign() > 0 {
-		order.Metadata = map[string]interface{}{
-			"expiration": b.expiration.String(),
-		}
+		order.Expiration = types.U256{Int: b.expiration}
 	}
 
 	return &clobtypes.SignableOrder{
@@ -485,13 +491,10 @@ func (b *OrderBuilder) buildLimit(ctx context.Context) (*clobtypes.Order, error)
 		SignatureType: &sigType,
 		Timestamp:     time.Now().UnixMilli(),
 		Builder:       b.builderCode,
+		Metadata:      b.metadata,
 	}
 	if b.expiration != nil && b.expiration.Sign() > 0 {
 		order.Expiration = types.U256{Int: b.expiration}
-		if order.Metadata == nil {
-			order.Metadata = make(map[string]interface{})
-		}
-		order.Metadata["expiration"] = b.expiration.String()
 	}
 
 	return order, nil
