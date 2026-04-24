@@ -225,10 +225,10 @@ func TestV2OrderSignature(t *testing.T) {
 	if signable.Order.Builder == "" {
 		t.Fatalf("expected builder code")
 	}
-	if signable.Order.FeeRateBps.Sign() != 0 {
+	if signable.Order.FeeRateBps.BigInt() != nil && signable.Order.FeeRateBps.Sign() != 0 {
 		t.Fatalf("expected feeRateBps to be zero in V2")
 	}
-	if signable.Order.Nonce.Sign() != 0 {
+	if signable.Order.Nonce.Int != nil && signable.Order.Nonce.Int.Sign() != 0 {
 		t.Fatalf("expected nonce to be zero in V2")
 	}
 	// Verify metadata defaults to zero bytes32 in the wire payload
