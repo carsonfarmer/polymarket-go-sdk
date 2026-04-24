@@ -18,6 +18,15 @@ type SignRequest struct {
 	Timestamp int64  `json:"timestamp"`
 }
 
+// Legacy V1 builder HMAC header names. These are deprecated in V2 (which uses
+// the builderCode field on orders instead) but kept for backward compatibility.
+const (
+	headerBuilderAPIKey     = "POLY_BUILDER_API_KEY"
+	headerBuilderPassphrase = "POLY_BUILDER_PASSPHRASE"
+	headerBuilderSignature  = "POLY_BUILDER_SIGNATURE"
+	headerBuilderTimestamp  = "POLY_BUILDER_TIMESTAMP"
+)
+
 // Env vars
 var (
 	BuilderKey        = os.Getenv("BUILDER_KEY")
@@ -77,10 +86,10 @@ func handleSign(w http.ResponseWriter, r *http.Request) {
 	// V2 uses the `builderCode` field on orders instead.
 	// This endpoint is kept for backward compatibility with V1 infrastructure only.
 	resp := map[string]string{
-		"POLY_BUILDER_API_KEY":     BuilderKey,
-		"POLY_BUILDER_PASSPHRASE": BuilderPassphrase,
-		"POLY_BUILDER_TIMESTAMP":  fmt.Sprintf("%d", req.Timestamp),
-		"POLY_BUILDER_SIGNATURE":  sig,
+		headerBuilderAPIKey:     BuilderKey,
+		headerBuilderPassphrase: BuilderPassphrase,
+		headerBuilderTimestamp:  fmt.Sprintf("%d", req.Timestamp),
+		headerBuilderSignature:  sig,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
