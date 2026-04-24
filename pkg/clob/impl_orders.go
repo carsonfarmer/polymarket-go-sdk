@@ -11,6 +11,7 @@ import (
 
 	"github.com/GoPolymarket/polymarket-go-sdk/pkg/auth"
 	"github.com/GoPolymarket/polymarket-go-sdk/pkg/clob/clobtypes"
+	"github.com/GoPolymarket/polymarket-go-sdk/pkg/logger"
 	"github.com/GoPolymarket/polymarket-go-sdk/pkg/types"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -30,6 +31,10 @@ func (c *clientImpl) CreateOrderWithOptions(ctx context.Context, order *clobtype
 		negRisk = *opts.NegRisk
 	} else if order != nil && order.TokenID.Int != nil {
 		// Auto-detect neg-risk status from API cache or fetch it.
+		// Note: a cache miss here will cause a synchronous HTTP request on the
+		// order-placement hot path. Set NegRisk explicitly on OrderOptions or
+		// OrderBuilder to avoid this latency.
+		logger.Debug("NegRisk not set; auto-detecting for token %s", order.TokenID.Int.String())
 		resp, err := c.NegRisk(ctx, &clobtypes.NegRiskRequest{TokenID: order.TokenID.Int.String()})
 		if err == nil {
 			negRisk = resp.NegRisk
@@ -60,21 +65,21 @@ func (c *clientImpl) CreateOrderFromSignable(ctx context.Context, order *clobtyp
 }
 
 func (c *clientImpl) signOrder(order *clobtypes.Order, negRisk bool) (*clobtypes.SignedOrder, error) {
-	return signOrderWithCreds(c.signer, c.apiKey, order, &c.signatureType, c.funder, c.saltGenerator, negRisk)
+	return signOrderWithCreds(c.signer, c.apiKey, order, &c.signatureType, c.funder, c.saltGenerator, c.resolveExchangeAddr(negRisk))
 }
 
 // SignOrder builds an EIP-712 signature for the given order without posting it.
 // For neg-risk tokens, use SignOrderNegRisk or set NegRisk via OrderBuilder.
 func SignOrder(signer auth.Signer, apiKey *auth.APIKey, order *clobtypes.Order) (*clobtypes.SignedOrder, error) {
-	return signOrderWithCreds(signer, apiKey, order, nil, nil, nil, false)
+	return signOrderWithCreds(signer, apiKey, order, nil, nil, nil, DefaultExchangeAddress)
 }
 
 // SignOrderNegRisk builds an EIP-712 signature using the neg-risk exchange contract.
 func SignOrderNegRisk(signer auth.Signer, apiKey *auth.APIKey, order *clobtypes.Order) (*clobtypes.SignedOrder, error) {
-	return signOrderWithCreds(signer, apiKey, order, nil, nil, nil, true)
+	return signOrderWithCreds(signer, apiKey, order, nil, nil, nil, DefaultNegRiskExchangeAddress)
 }
 
-func signOrderWithCreds(signer auth.Signer, apiKey *auth.APIKey, order *clobtypes.Order, sigType *auth.SignatureType, funder *types.Address, saltGen SaltGenerator, negRisk bool) (*clobtypes.SignedOrder, error) {
+func signOrderWithCreds(signer auth.Signer, apiKey *auth.APIKey, order *clobtypes.Order, sigType *auth.SignatureType, funder *types.Address, saltGen SaltGenerator, verifyingContract string) (*clobtypes.SignedOrder, error) {
 	if signer == nil {
 		return nil, auth.ErrMissingSigner
 	}
@@ -110,11 +115,6 @@ func signOrderWithCreds(signer auth.Signer, apiKey *auth.APIKey, order *clobtype
 			}
 			order.Maker = maker
 		}
-	}
-
-	verifyingContract := "0xE111180000d2663C0091e4f400237545B87B996B" // V2 Exchange
-	if negRisk {
-		verifyingContract = "0xe2222d279d744050d28e00520010520000310F59" // V2 NegRisk Exchange
 	}
 
 	domain := &apitypes.TypedDataDomain{

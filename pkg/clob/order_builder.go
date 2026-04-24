@@ -22,10 +22,9 @@ type OrderBuilder struct {
 
 	tokenID    string
 	side       string
-	price      decimal.Decimal
-	size       decimal.Decimal
-	feeRateBps decimal.Decimal // Deprecated: no longer used in V2 orders
-	tickSize   float64
+	price    decimal.Decimal
+	size     decimal.Decimal
+	tickSize float64
 	orderType  clobtypes.OrderType
 
 	// Optional overrides
