@@ -101,11 +101,6 @@ func orderWithSignature(order *clobtypes.SignedOrder) (map[string]interface{}, e
 		builder = "0x0000000000000000000000000000000000000000000000000000000000000000"
 	}
 	payload["builder"] = builder
-	// Legacy fields — emit as zero values for backward compatibility with intermediate infrastructure
-	payload["taker"] = order.Order.Taker.Hex()
-	payload["expiration"] = u256String(order.Order.Expiration)
-	payload["nonce"] = u256String(order.Order.Nonce)
-	payload["feeRateBps"] = decimalString(order.Order.FeeRateBps)
 
 	return payload, nil
 }

@@ -9,7 +9,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/shopspring/decimal"
 
@@ -58,11 +57,6 @@ func main() {
 		TakerAmount: decimal.NewFromFloat(5.0),
 		Side:        "BUY",
 		Timestamp:   time.Now().UnixMilli(),
-		// Legacy fields kept for wire compatibility but zeroed in V2
-		Taker:       common.HexToAddress("0x0000000000000000000000000000000000000000"),
-		Expiration:  types.U256{Int: big.NewInt(0)},
-		FeeRateBps:  decimal.NewFromInt(0),
-		Nonce:       types.U256{Int: big.NewInt(0)},
 	}
 
 	fmt.Println("Signing and posting order...")
