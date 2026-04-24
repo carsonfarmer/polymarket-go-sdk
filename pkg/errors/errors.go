@@ -14,7 +14,6 @@ const (
 	// Authentication and Authorization error codes (AUTH-xxx)
 	CodeMissingSigner        ErrorCode = "AUTH-001"
 	CodeMissingCreds         ErrorCode = "AUTH-002"
-	CodeMissingBuilderConfig ErrorCode = "AUTH-003"
 	CodeInvalidSignature     ErrorCode = "AUTH-004"
 	CodeUnauthorized         ErrorCode = "AUTH-005"
 
@@ -96,8 +95,6 @@ var (
 	ErrMissingSigner = New(CodeMissingSigner, "signer is required")
 	// ErrMissingCreds is returned when API credentials are required but not provided.
 	ErrMissingCreds = New(CodeMissingCreds, "api credentials are required")
-	// ErrMissingBuilderConfig is returned when builder config is required but not provided.
-	ErrMissingBuilderConfig = New(CodeMissingBuilderConfig, "builder config is required")
 	// ErrInvalidSignature is returned when a signature is invalid.
 	ErrInvalidSignature = New(CodeInvalidSignature, "invalid signature")
 	// ErrUnauthorized is returned when authentication fails.

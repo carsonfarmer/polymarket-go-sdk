@@ -34,24 +34,9 @@ signer, _ := kms.NewAWSSigner(ctx, kmsClient, "alias/my-trading-key", 137)
 client := polymarket.NewClient().WithAuth(signer, apiKey)
 ```
 
-## Builder Attribution Security
+## Builder Attribution (V2)
 
-By default, this SDK attributes trading volume to the maintainer via a **Remote Signer**.
-
-### Is my API Key safe?
-**YES.**
-1. **No Credentials Shared**: Your L2 CLOB API Keys (`POLY_API_KEY`) and L1 Private Keys are **NEVER** sent to the remote signer.
-2. **Attribution Only**: The remote signer only signs the `POLY_BUILDER_SIGNATURE` header. This header is used solely for volume tracking and cannot be used to withdraw funds or place orders on your behalf.
-3. **Transparency**: The source code for the signer service is available in `cmd/signer-server`.
-
-### Opting Out
-Institutions can easily override this by providing their own Builder credentials:
-
-```go
-client := polymarket.NewClient(
-    polymarket.WithBuilderAttribution("YOUR_KEY", "YOUR_SECRET", "YOUR_PASSPHRASE"),
-)
-```
+In CLOB API V2, builder attribution is handled via the `BuilderCode` field on orders. No credentials are shared with any remote service. Set `BuilderCode("0x...")` on the `OrderBuilder` to attribute volume to your builder account.
 
 ## Security Operations Checklist
 

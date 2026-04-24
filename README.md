@@ -245,8 +245,7 @@ builder := clob.NewOrderBuilder(authClient, signer).
     Side("BUY").
     Price(0.5).
     Size(10).
-    TickSize("0.01").
-    FeeRateBps(0)
+    TickSize("0.01")
 
 signable, _ := builder.BuildSignableWithContext(ctx)
 fmt.Println("Maker:", signable.Order.Maker.Hex())
@@ -311,27 +310,18 @@ builder.PriceDec(decimal.NewFromFloat(0.5001)).
         SizeDec(decimal.NewFromInt(100))
 ```
 
-### 3. Remote Builder Attribution
+### 3. Builder Attribution (V2)
 
-If you are developing a client-side application (Web/Mobile) and want to receive builder rewards without exposing your `Builder Secret` to the end users, you can use the **Remote Signer** pattern.
-
-1.  Deploy the standalone signer service found in `cmd/signer-server` to your secure infrastructure (support for Docker included).
-2.  Configure your client to use the remote signer:
+In CLOB API V2, builder attribution is done via the `BuilderCode` field on orders, replacing the old HMAC header approach:
 
 ```go
-client := polymarket.NewClient(
-    polymarket.WithBuilderConfig(&auth.BuilderConfig{
-        Remote: &auth.BuilderRemoteConfig{
-            Host: "https://your-signer-api.com/v1/sign-builder",
-        },
-    }),
-)
-```
-
-If you need to switch an already-authenticated client into builder attribution mode (and restart heartbeats with the new headers), use `PromoteToBuilder`:
-
-```go
-builderClient := authClient.PromoteToBuilder(myBuilderConfig)
+signable, _ := clob.NewOrderBuilder(authClient, signer).
+    TokenID("TOKEN_ID_HERE").
+    Side("BUY").
+    Price(0.5).
+    Size(10).
+    BuilderCode("0xYOUR_BUILDER_CODE_BYTES32").
+    BuildSignable()
 ```
 
 ## 🗺 Roadmap
