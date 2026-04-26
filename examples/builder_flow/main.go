@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/GoPolymarket/polymarket-go-sdk/pkg/clob/clobtypes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,8 +12,8 @@ import (
 	polymarket "github.com/GoPolymarket/polymarket-go-sdk"
 	"github.com/GoPolymarket/polymarket-go-sdk/pkg/auth"
 	"github.com/GoPolymarket/polymarket-go-sdk/pkg/clob"
-	
-"github.com/GoPolymarket/polymarket-go-sdk/pkg/gamma"
+	"github.com/GoPolymarket/polymarket-go-sdk/pkg/clob/clobtypes"
+	"github.com/GoPolymarket/polymarket-go-sdk/pkg/gamma"
 )
 
 func main() {
@@ -50,25 +49,11 @@ func main() {
 
 	authClient := client.CLOB.WithAuth(signer, apiKey)
 
-	builderConfig := loadBuilderConfigFromEnv()
-	if builderConfig == nil || !builderConfig.IsValid() {
-		log.Println("No builder config provided, creating builder API key...")
-		resp, err := authClient.CreateBuilderAPIKey(ctx)
-		if err != nil {
-			log.Fatalf("CreateBuilderAPIKey failed: %v", err)
-		}
-		builderConfig = &auth.BuilderConfig{
-			Local: &auth.BuilderCredentials{
-				Key:        resp.APIKey,
-				Secret:     resp.Secret,
-				Passphrase: resp.Passphrase,
-			},
-		}
-	} else if builderConfig.Remote != nil {
-		log.Printf("Using remote builder signer: %s", builderConfig.Remote.Host)
+	// V2: Builder attribution is done via builderCode on the order, not HMAC headers.
+	builderCode := strings.TrimSpace(os.Getenv("POLYMARKET_BUILDER_CODE"))
+	if builderCode == "" {
+		log.Println("No POLYMARKET_BUILDER_CODE set; order will have no builder attribution.")
 	}
-
-	builderClient := authClient.WithBuilderConfig(builderConfig)
 
 	tokenID, question, err := pickTokenID(ctx, gammaClient, client.CLOB)
 	if err != nil {
@@ -76,25 +61,29 @@ func main() {
 	}
 	log.Printf("Using token %s (market: %s)", tokenID, question)
 
-	signable, err := clob.NewOrderBuilder(builderClient, signer).
+	builder := clob.NewOrderBuilder(authClient, signer).
 		TokenID(tokenID).
 		Side("BUY").
 		Price(0.5).
 		Size(1).
-		OrderType(clobtypes.OrderTypeGTC).
-		BuildSignable()
+		OrderType(clobtypes.OrderTypeGTC)
+	if builderCode != "" {
+		builder = builder.BuilderCode(builderCode)
+	}
+
+	signable, err := builder.BuildSignable()
 	if err != nil {
 		log.Fatalf("BuildSignable failed: %v", err)
 	}
 
-	resp, err := builderClient.CreateOrderFromSignable(ctx, signable)
+	resp, err := authClient.CreateOrderFromSignable(ctx, signable)
 	if err != nil {
 		log.Printf("Order creation returned error (expected in demo): %v", err)
 	} else {
 		log.Printf("Order Created! ID: %s", resp.ID)
 	}
 
-	trades, err := builderClient.BuilderTrades(ctx, &clobtypes.BuilderTradesRequest{
+	trades, err := authClient.BuilderTrades(ctx, &clobtypes.BuilderTradesRequest{
 		Maker: signer.Address().Hex(),
 		Limit: 5,
 	})
@@ -116,32 +105,6 @@ func loadAPIKeyFromEnv() *auth.APIKey {
 		Key:        key,
 		Secret:     secret,
 		Passphrase: passphrase,
-	}
-}
-
-func loadBuilderConfigFromEnv() *auth.BuilderConfig {
-	remoteHost := strings.TrimSpace(os.Getenv("POLYMARKET_BUILDER_REMOTE_HOST"))
-	if remoteHost != "" {
-		return &auth.BuilderConfig{
-			Remote: &auth.BuilderRemoteConfig{
-				Host:  remoteHost,
-				Token: strings.TrimSpace(os.Getenv("POLYMARKET_BUILDER_REMOTE_TOKEN")),
-			},
-		}
-	}
-
-	key := os.Getenv("POLYMARKET_BUILDER_API_KEY")
-	secret := os.Getenv("POLYMARKET_BUILDER_API_SECRET")
-	passphrase := os.Getenv("POLYMARKET_BUILDER_API_PASSPHRASE")
-	if key == "" && secret == "" && passphrase == "" {
-		return nil
-	}
-	return &auth.BuilderConfig{
-		Local: &auth.BuilderCredentials{
-			Key:        key,
-			Secret:     secret,
-			Passphrase: passphrase,
-		},
 	}
 }
 

@@ -67,7 +67,6 @@ func TestErrorDefinitions(t *testing.T) {
 		// Authentication and Authorization errors
 		{"ErrMissingSigner", ErrMissingSigner, CodeMissingSigner},
 		{"ErrMissingCreds", ErrMissingCreds, CodeMissingCreds},
-		{"ErrMissingBuilderConfig", ErrMissingBuilderConfig, CodeMissingBuilderConfig},
 		{"ErrInvalidSignature", ErrInvalidSignature, CodeInvalidSignature},
 		{"ErrUnauthorized", ErrUnauthorized, CodeUnauthorized},
 
@@ -141,7 +140,6 @@ func TestErrorCodeUniqueness(t *testing.T) {
 	allCodes := []ErrorCode{
 		CodeMissingSigner,
 		CodeMissingCreds,
-		CodeMissingBuilderConfig,
 		CodeInvalidSignature,
 		CodeUnauthorized,
 		CodeProxyWalletUnsupported,
@@ -188,7 +186,6 @@ func TestErrorMessageUniqueness(t *testing.T) {
 	allErrors := []*SDKError{
 		ErrMissingSigner,
 		ErrMissingCreds,
-		ErrMissingBuilderConfig,
 		ErrInvalidSignature,
 		ErrUnauthorized,
 		ErrProxyWalletUnsupported,

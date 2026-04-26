@@ -226,7 +226,7 @@ func TestSignOrderDefaults(t *testing.T) {
 		Signer:      signer.Address(),
 	}
 
-	signed, err := client.signOrder(order)
+	signed, err := client.signOrder(order, false)
 	if err != nil {
 		t.Fatalf("signOrder failed: %v", err)
 	}

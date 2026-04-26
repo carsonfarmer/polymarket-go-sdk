@@ -76,16 +76,6 @@ func TestNewClientWithOptions(t *testing.T) {
 	}
 }
 
-func TestAttributionOptions(t *testing.T) {
-	cfg := invalidStreamingConfig()
-	_ = NewClient(
-		WithConfig(cfg),
-		WithBuilderConfig(nil),
-		WithOfficialGoSDKSupport(),
-		WithBuilderAttribution("key", "secret", "pass"),
-	)
-}
-
 func TestNewClientEReturnsInitError(t *testing.T) {
 	cfg := invalidStreamingConfig()
 

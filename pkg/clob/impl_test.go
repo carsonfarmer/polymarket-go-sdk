@@ -16,7 +16,7 @@ func TestClientInitializationAndOptions(t *testing.T) {
 
 	t.Run("Health", func(t *testing.T) {
 		doer := &staticDoer{
-			responses: map[string]string{"/": `"OK"`},
+			responses: map[string]string{"/ok": `"OK"`},
 		}
 		client := NewClient(transport.NewClient(doer, "http://example"))
 		status, err := client.Health(ctx)
@@ -67,18 +67,6 @@ func TestClientInitializationAndOptions(t *testing.T) {
 		}
 	})
 
-	t.Run("WithBuilderConfig", func(t *testing.T) {
-		orig := client.(*clientImpl)
-		newClient := client.WithBuilderConfig(&auth.BuilderConfig{})
-		next := newClient.(*clientImpl)
-		if newClient == nil {
-			t.Errorf("WithBuilderConfig failed")
-		}
-		if orig.httpClient == next.httpClient {
-			t.Errorf("WithBuilderConfig should not reuse mutable transport client")
-		}
-	})
-
 	t.Run("WithUseServerTime", func(t *testing.T) {
 		orig := client.(*clientImpl)
 		newClient := client.WithUseServerTime(true)
@@ -120,7 +108,6 @@ func TestClientInitializationAndOptions(t *testing.T) {
 
 	t.Run("Caches", func(t *testing.T) {
 		client.SetNegRisk("t1", true)
-		client.SetFeeRateBps("t1", 10)
 		client.InvalidateCaches()
 	})
 }

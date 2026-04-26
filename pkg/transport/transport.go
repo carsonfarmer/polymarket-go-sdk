@@ -43,7 +43,6 @@ type Client struct {
 	userAgent      string
 	signer         auth.Signer
 	apiKey         *auth.APIKey
-	builder        *auth.BuilderConfig
 	useServerTime  bool
 	rateLimiter    *RateLimiter
 	circuitBreaker *CircuitBreaker
@@ -111,7 +110,6 @@ func (c *Client) CloneWithBaseURL(baseURL string) *Client {
 	clone.useServerTime = c.useServerTime
 	clone.signer = c.signer
 	clone.apiKey = c.apiKey
-	clone.builder = c.builder
 	clone.rateLimiter = c.rateLimiter
 	clone.circuitBreaker = c.circuitBreaker
 	return clone
@@ -136,11 +134,6 @@ func (c *Client) SetUserAgent(userAgent string) {
 func (c *Client) SetAuth(signer auth.Signer, apiKey *auth.APIKey) {
 	c.signer = signer
 	c.apiKey = apiKey
-}
-
-// SetBuilderConfig configures the client for builder attribution headers.
-func (c *Client) SetBuilderConfig(config *auth.BuilderConfig) {
-	c.builder = config
 }
 
 // SetUseServerTime enables or disables server-time synchronization for signatures.
@@ -294,19 +287,6 @@ func (c *Client) doCall(ctx context.Context, method, path string, query url.Valu
 			req.Header.Set(auth.HeaderPolyPassphrase, c.apiKey.Passphrase)
 			req.Header.Set(auth.HeaderPolyTimestamp, fmt.Sprintf("%d", ts))
 			req.Header.Set(auth.HeaderPolySignature, sig)
-
-			if c.builder != nil && c.builder.IsValid() {
-				builderHeaders, err := c.builder.Headers(ctx, method, signPath, serialized, ts)
-				if err != nil {
-					return fmt.Errorf("failed to build builder headers: %w", err)
-				}
-				for k, values := range builderHeaders {
-					if len(values) == 0 || req.Header.Get(k) != "" {
-						continue
-					}
-					req.Header.Set(k, values[0])
-				}
-			}
 		}
 
 		resp, err := c.httpClient.Do(req)

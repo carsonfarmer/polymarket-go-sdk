@@ -21,6 +21,9 @@ func (c *clientImpl) Markets(ctx context.Context, req *clobtypes.MarketsRequest)
 		if req.Active != nil {
 			q.Set("active", strconv.FormatBool(*req.Active))
 		}
+		if req.Closed != nil {
+			q.Set("closed", strconv.FormatBool(*req.Closed))
+		}
 		if req.AssetID != "" {
 			q.Set("asset_id", req.AssetID)
 		}
@@ -77,6 +80,9 @@ func (c *clientImpl) SimplifiedMarkets(ctx context.Context, req *clobtypes.Marke
 		}
 		if req.Active != nil {
 			q.Set("active", strconv.FormatBool(*req.Active))
+		}
+		if req.Closed != nil {
+			q.Set("closed", strconv.FormatBool(*req.Closed))
 		}
 		if req.AssetID != "" {
 			q.Set("asset_id", req.AssetID)
@@ -427,6 +433,16 @@ func (c *clientImpl) PricesHistory(ctx context.Context, req *clobtypes.PricesHis
 	}
 	var resp clobtypes.PricesHistoryResponse
 	err := c.httpClient.Get(ctx, "/prices-history", q, &resp)
+	return resp, mapError(err)
+}
+
+func (c *clientImpl) ClobMarketInfo(ctx context.Context, req *clobtypes.ClobMarketInfoRequest) (clobtypes.ClobMarketInfoResponse, error) {
+	var resp clobtypes.ClobMarketInfoResponse
+	path := "/clob-markets"
+	if req != nil && req.ConditionID != "" {
+		path = fmt.Sprintf("/clob-markets/%s", req.ConditionID)
+	}
+	err := c.httpClient.Get(ctx, path, nil, &resp)
 	return resp, mapError(err)
 }
 

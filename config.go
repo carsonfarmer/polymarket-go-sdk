@@ -11,6 +11,7 @@ import (
 // BaseURLs defines per-service base endpoints.
 type BaseURLs struct {
 	CLOB     string
+	CLOBV2   string // Pre-cutover V2 testing endpoint
 	CLOBWS   string
 	Geoblock string
 	Gamma    string
@@ -36,6 +37,7 @@ func DefaultConfig() Config {
 	return Config{
 		BaseURLs: BaseURLs{
 			CLOB:     "https://clob.polymarket.com",
+			CLOBV2:   "https://clob-v2.polymarket.com",
 			CLOBWS:   "wss://ws-subscriptions-clob.polymarket.com",
 			Geoblock: "https://polymarket.com",
 			Gamma:    "https://gamma-api.polymarket.com",

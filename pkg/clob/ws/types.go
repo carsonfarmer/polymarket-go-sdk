@@ -160,17 +160,20 @@ type TickSizeChangeEvent struct {
 	Market          string `json:"market,omitempty"`
 	TickSize        string `json:"tick_size,omitempty"`
 	MinimumTickSize string `json:"minimum_tick_size,omitempty"`
+	OldTickSize     string `json:"old_tick_size,omitempty"`
+	NewTickSize     string `json:"new_tick_size,omitempty"`
 	Timestamp       string `json:"timestamp,omitempty"`
 }
 
 type LastTradePriceEvent struct {
-	AssetID    string `json:"asset_id"`
-	Market     string `json:"market,omitempty"`
-	Price      string `json:"price"`
-	Side       string `json:"side,omitempty"`
-	Size       string `json:"size,omitempty"`
-	FeeRateBps string `json:"fee_rate_bps,omitempty"`
-	Timestamp  string `json:"timestamp,omitempty"`
+	AssetID         string `json:"asset_id"`
+	Market          string `json:"market,omitempty"`
+	Price           string `json:"price"`
+	Side            string `json:"side,omitempty"`
+	Size            string `json:"size,omitempty"`
+	FeeRateBps      string `json:"fee_rate_bps,omitempty"`
+	TransactionHash string `json:"transaction_hash,omitempty"`
+	Timestamp       string `json:"timestamp,omitempty"`
 }
 
 type BestBidAskEvent struct {
@@ -191,15 +194,24 @@ type EventMessage struct {
 }
 
 type NewMarketEvent struct {
-	ID           string        `json:"id"`
-	Question     string        `json:"question"`
-	Market       string        `json:"market,omitempty"`
-	Slug         string        `json:"slug,omitempty"`
-	Description  string        `json:"description,omitempty"`
-	AssetIDs     []string      `json:"assets_ids,omitempty"`
-	Outcomes     []string      `json:"outcomes,omitempty"`
-	EventMessage *EventMessage `json:"event_message,omitempty"`
-	Timestamp    string        `json:"timestamp,omitempty"`
+	ID                    string        `json:"id"`
+	Question              string        `json:"question"`
+	Market                string        `json:"market,omitempty"`
+	Slug                  string        `json:"slug,omitempty"`
+	Description           string        `json:"description,omitempty"`
+	AssetIDs              []string      `json:"assets_ids,omitempty"`
+	Outcomes              []string      `json:"outcomes,omitempty"`
+	EventMessage          *EventMessage `json:"event_message,omitempty"`
+	Timestamp             string        `json:"timestamp,omitempty"`
+	Tags                  []string      `json:"tags,omitempty"`
+	ConditionID           string        `json:"condition_id,omitempty"`
+	Active                *bool         `json:"active,omitempty"`
+	ClobTokenIDs          []string      `json:"clob_token_ids,omitempty"`
+	SportsMarketType      string        `json:"sports_market_type,omitempty"`
+	Line                  string        `json:"line,omitempty"`
+	GameStartTime         string        `json:"game_start_time,omitempty"`
+	OrderPriceMinTickSize string        `json:"order_price_min_tick_size,omitempty"`
+	GroupItemTitle        string        `json:"group_item_title,omitempty"`
 }
 
 type MarketResolvedEvent struct {
@@ -214,6 +226,7 @@ type MarketResolvedEvent struct {
 	WinningOutcome string        `json:"winning_outcome,omitempty"`
 	EventMessage   *EventMessage `json:"event_message,omitempty"`
 	Timestamp      string        `json:"timestamp,omitempty"`
+	Tags           []string      `json:"tags,omitempty"`
 }
 
 type TradeEvent struct {
@@ -247,4 +260,7 @@ type OrderEvent struct {
 	MakerAddress    string   `json:"maker_address"`
 	AssociateTrades []string `json:"associate_trades"`
 	EventType       string   `json:"event_type"`
+	// V2 fields
+	Builder  string `json:"builder,omitempty"`
+	Metadata string `json:"metadata,omitempty"`
 }

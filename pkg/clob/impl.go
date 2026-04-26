@@ -22,7 +22,6 @@ type clientImpl struct {
 	httpClient     *transport.Client
 	signer         auth.Signer
 	apiKey         *auth.APIKey
-	builderCfg     *auth.BuilderConfig
 	signatureType  auth.SignatureType
 	authNonce      *int64
 	funder         *types.Address
@@ -33,6 +32,11 @@ type clientImpl struct {
 	rfq            rfq.Client
 	ws             ws.Client
 	heartbeat      heartbeat.Client
+
+	// exchangeAddr and negRiskExchangeAddr allow overriding the V2 verifying
+	// contracts used for EIP-712 order signing (e.g. for testnets or forks).
+	exchangeAddr        string
+	negRiskExchangeAddr string
 
 	heartbeatInterval time.Duration
 	heartbeatStop     chan struct{}
@@ -54,21 +58,22 @@ type orderDefaults struct {
 
 func (c *clientImpl) cloneWithTransport(httpClient *transport.Client) *clientImpl {
 	newC := &clientImpl{
-		httpClient:        httpClient,
-		signer:            c.signer,
-		apiKey:            c.apiKey,
-		builderCfg:        c.builderCfg,
-		signatureType:     c.signatureType,
-		authNonce:         c.authNonce,
-		funder:            c.funder,
-		saltGenerator:     c.saltGenerator,
-		cache:             c.cache,
-		geoblockHost:      c.geoblockHost,
-		geoblockClient:    nil,
-		rfq:               rfq.NewClient(httpClient),
-		ws:                c.ws,
-		heartbeat:         heartbeat.NewClient(httpClient),
-		heartbeatInterval: c.heartbeatInterval,
+		httpClient:          httpClient,
+		signer:              c.signer,
+		apiKey:              c.apiKey,
+		signatureType:       c.signatureType,
+		authNonce:           c.authNonce,
+		funder:              c.funder,
+		saltGenerator:       c.saltGenerator,
+		cache:               c.cache,
+		geoblockHost:        c.geoblockHost,
+		geoblockClient:      nil,
+		rfq:                 rfq.NewClient(httpClient),
+		ws:                  c.ws,
+		heartbeat:           heartbeat.NewClient(httpClient),
+		exchangeAddr:        c.exchangeAddr,
+		negRiskExchangeAddr: c.negRiskExchangeAddr,
+		heartbeatInterval:   c.heartbeatInterval,
 	}
 	if httpClient != nil {
 		newC.geoblockClient = httpClient.CloneWithBaseURL(newC.geoblockHost)
@@ -108,7 +113,6 @@ func NewClientWithGeoblock(httpClient *transport.Client, geoblockHost string) Cl
 		authNonce:      nil,
 		funder:         nil,
 		saltGenerator:  nil,
-		// builderCfg is nil by default (Opt-in)
 		rfq:       rfq.NewClient(httpClient),
 		heartbeat: heartbeat.NewClient(httpClient),
 	}
@@ -144,118 +148,118 @@ func (c *clientImpl) WithAuth(signer auth.Signer, apiKey *auth.APIKey) Client {
 	return newC
 }
 
-// WithBuilderConfig sets the builder attribution config.
-func (c *clientImpl) WithBuilderConfig(config *auth.BuilderConfig) Client {
-	newHTTPClient := c.httpClient
-	if newHTTPClient != nil {
-		newHTTPClient = newHTTPClient.Clone()
-		newHTTPClient.SetBuilderConfig(config)
-	}
-	newC := c.cloneWithTransport(newHTTPClient)
-	newC.builderCfg = config
-	return newC
-}
-
-// PromoteToBuilder switches the client into builder attribution mode.
-func (c *clientImpl) PromoteToBuilder(config *auth.BuilderConfig) Client {
-	if config == nil {
-		return c
-	}
-	// Stop heartbeats on the old instance before switching.
-	c.StopHeartbeats()
-	newHTTPClient := c.httpClient
-	if newHTTPClient != nil {
-		newHTTPClient = newHTTPClient.Clone()
-		newHTTPClient.SetBuilderConfig(config)
-	}
-	newC := c.cloneWithTransport(newHTTPClient)
-	newC.builderCfg = config
-	newC.startHeartbeats()
-	return newC
-}
-
 // WithSignatureType sets the default signature type for order signing and balance/rewards queries.
 func (c *clientImpl) WithSignatureType(sigType auth.SignatureType) Client {
 	return &clientImpl{
-		httpClient:        c.httpClient,
-		signer:            c.signer,
-		apiKey:            c.apiKey,
-		builderCfg:        c.builderCfg,
-		signatureType:     sigType,
-		authNonce:         c.authNonce,
-		funder:            c.funder,
-		saltGenerator:     c.saltGenerator,
-		cache:             c.cache,
-		geoblockHost:      c.geoblockHost,
-		geoblockClient:    c.geoblockClient,
-		rfq:               c.rfq,
-		ws:                c.ws,
-		heartbeat:         c.heartbeat,
-		heartbeatInterval: c.heartbeatInterval,
+		httpClient:          c.httpClient,
+		signer:              c.signer,
+		apiKey:              c.apiKey,
+		signatureType:       sigType,
+		authNonce:           c.authNonce,
+		funder:              c.funder,
+		saltGenerator:       c.saltGenerator,
+		cache:               c.cache,
+		geoblockHost:        c.geoblockHost,
+		geoblockClient:      c.geoblockClient,
+		rfq:                 c.rfq,
+		ws:                  c.ws,
+		heartbeat:           c.heartbeat,
+		exchangeAddr:        c.exchangeAddr,
+		negRiskExchangeAddr: c.negRiskExchangeAddr,
+		heartbeatInterval:   c.heartbeatInterval,
 	}
 }
 
 // WithAuthNonce sets the default nonce used when creating/deriving API keys.
 func (c *clientImpl) WithAuthNonce(nonce int64) Client {
 	return &clientImpl{
-		httpClient:        c.httpClient,
-		signer:            c.signer,
-		apiKey:            c.apiKey,
-		builderCfg:        c.builderCfg,
-		signatureType:     c.signatureType,
-		authNonce:         &nonce,
-		funder:            c.funder,
-		saltGenerator:     c.saltGenerator,
-		cache:             c.cache,
-		geoblockHost:      c.geoblockHost,
-		geoblockClient:    c.geoblockClient,
-		rfq:               c.rfq,
-		ws:                c.ws,
-		heartbeat:         c.heartbeat,
-		heartbeatInterval: c.heartbeatInterval,
+		httpClient:          c.httpClient,
+		signer:              c.signer,
+		apiKey:              c.apiKey,
+		signatureType:       c.signatureType,
+		authNonce:           &nonce,
+		funder:              c.funder,
+		saltGenerator:       c.saltGenerator,
+		cache:               c.cache,
+		geoblockHost:        c.geoblockHost,
+		geoblockClient:      c.geoblockClient,
+		rfq:                 c.rfq,
+		ws:                  c.ws,
+		heartbeat:           c.heartbeat,
+		exchangeAddr:        c.exchangeAddr,
+		negRiskExchangeAddr: c.negRiskExchangeAddr,
+		heartbeatInterval:   c.heartbeatInterval,
 	}
 }
 
 // WithFunder sets the default funder (maker) address used for order creation.
 func (c *clientImpl) WithFunder(funder types.Address) Client {
 	return &clientImpl{
-		httpClient:        c.httpClient,
-		signer:            c.signer,
-		apiKey:            c.apiKey,
-		builderCfg:        c.builderCfg,
-		signatureType:     c.signatureType,
-		authNonce:         c.authNonce,
-		funder:            &funder,
-		saltGenerator:     c.saltGenerator,
-		cache:             c.cache,
-		geoblockHost:      c.geoblockHost,
-		geoblockClient:    c.geoblockClient,
-		rfq:               c.rfq,
-		ws:                c.ws,
-		heartbeat:         c.heartbeat,
-		heartbeatInterval: c.heartbeatInterval,
+		httpClient:          c.httpClient,
+		signer:              c.signer,
+		apiKey:              c.apiKey,
+		signatureType:       c.signatureType,
+		authNonce:           c.authNonce,
+		funder:              &funder,
+		saltGenerator:       c.saltGenerator,
+		cache:               c.cache,
+		geoblockHost:        c.geoblockHost,
+		geoblockClient:      c.geoblockClient,
+		rfq:                 c.rfq,
+		ws:                  c.ws,
+		heartbeat:           c.heartbeat,
+		exchangeAddr:        c.exchangeAddr,
+		negRiskExchangeAddr: c.negRiskExchangeAddr,
+		heartbeatInterval:   c.heartbeatInterval,
 	}
 }
 
 // WithSaltGenerator sets the default salt generator for new orders.
 func (c *clientImpl) WithSaltGenerator(gen SaltGenerator) Client {
 	return &clientImpl{
-		httpClient:        c.httpClient,
-		signer:            c.signer,
-		apiKey:            c.apiKey,
-		builderCfg:        c.builderCfg,
-		signatureType:     c.signatureType,
-		authNonce:         c.authNonce,
-		funder:            c.funder,
-		saltGenerator:     gen,
-		cache:             c.cache,
-		geoblockHost:      c.geoblockHost,
-		geoblockClient:    c.geoblockClient,
-		rfq:               c.rfq,
-		ws:                c.ws,
-		heartbeat:         c.heartbeat,
-		heartbeatInterval: c.heartbeatInterval,
+		httpClient:          c.httpClient,
+		signer:              c.signer,
+		apiKey:              c.apiKey,
+		signatureType:       c.signatureType,
+		authNonce:           c.authNonce,
+		funder:              c.funder,
+		saltGenerator:       gen,
+		cache:               c.cache,
+		geoblockHost:        c.geoblockHost,
+		geoblockClient:      c.geoblockClient,
+		rfq:                 c.rfq,
+		ws:                  c.ws,
+		heartbeat:           c.heartbeat,
+		exchangeAddr:        c.exchangeAddr,
+		negRiskExchangeAddr: c.negRiskExchangeAddr,
+		heartbeatInterval:   c.heartbeatInterval,
 	}
+}
+
+// WithExchangeAddresses overrides the V2 verifying contract addresses used for
+// EIP-712 order signing. Pass empty strings to keep the defaults.
+func (c *clientImpl) WithExchangeAddresses(exchange, negRiskExchange string) Client {
+	newC := c.cloneWithTransport(c.httpClient)
+	if exchange != "" {
+		newC.exchangeAddr = exchange
+	}
+	if negRiskExchange != "" {
+		newC.negRiskExchangeAddr = negRiskExchange
+	}
+	return newC
+}
+
+func (c *clientImpl) resolveExchangeAddr(negRisk bool) string {
+	if negRisk {
+		if c.negRiskExchangeAddr != "" {
+			return c.negRiskExchangeAddr
+		}
+		return DefaultNegRiskExchangeAddress
+	}
+	if c.exchangeAddr != "" {
+		return c.exchangeAddr
+	}
+	return DefaultExchangeAddress
 }
 
 // WithUseServerTime configures the transport to use server time for timestamps.
@@ -281,41 +285,43 @@ func (c *clientImpl) WithGeoblockHost(host string) Client {
 // WithWS sets the WebSocket client and returns a new client.
 func (c *clientImpl) WithWS(ws ws.Client) Client {
 	return &clientImpl{
-		httpClient:        c.httpClient,
-		signer:            c.signer,
-		apiKey:            c.apiKey,
-		builderCfg:        c.builderCfg,
-		signatureType:     c.signatureType,
-		authNonce:         c.authNonce,
-		funder:            c.funder,
-		saltGenerator:     c.saltGenerator,
-		cache:             c.cache,
-		geoblockHost:      c.geoblockHost,
-		geoblockClient:    c.geoblockClient,
-		rfq:               c.rfq,
-		ws:                ws,
-		heartbeat:         c.heartbeat,
-		heartbeatInterval: c.heartbeatInterval,
+		httpClient:          c.httpClient,
+		signer:              c.signer,
+		apiKey:              c.apiKey,
+		signatureType:       c.signatureType,
+		authNonce:           c.authNonce,
+		funder:              c.funder,
+		saltGenerator:       c.saltGenerator,
+		cache:               c.cache,
+		geoblockHost:        c.geoblockHost,
+		geoblockClient:      c.geoblockClient,
+		rfq:                 c.rfq,
+		ws:                  ws,
+		heartbeat:           c.heartbeat,
+		exchangeAddr:        c.exchangeAddr,
+		negRiskExchangeAddr: c.negRiskExchangeAddr,
+		heartbeatInterval:   c.heartbeatInterval,
 	}
 }
 
 func (c *clientImpl) WithHeartbeatInterval(interval time.Duration) Client {
 	newC := &clientImpl{
-		httpClient:        c.httpClient,
-		signer:            c.signer,
-		apiKey:            c.apiKey,
-		builderCfg:        c.builderCfg,
-		signatureType:     c.signatureType,
-		authNonce:         c.authNonce,
-		funder:            c.funder,
-		saltGenerator:     c.saltGenerator,
-		cache:             c.cache,
-		geoblockHost:      c.geoblockHost,
-		geoblockClient:    c.geoblockClient,
-		rfq:               c.rfq,
-		ws:                c.ws,
-		heartbeat:         c.heartbeat,
-		heartbeatInterval: interval,
+		httpClient:          c.httpClient,
+		signer:              c.signer,
+		apiKey:              c.apiKey,
+		signatureType:       c.signatureType,
+		authNonce:           c.authNonce,
+		funder:              c.funder,
+		saltGenerator:       c.saltGenerator,
+		cache:               c.cache,
+		geoblockHost:        c.geoblockHost,
+		geoblockClient:      c.geoblockClient,
+		rfq:                 c.rfq,
+		ws:                  c.ws,
+		heartbeat:           c.heartbeat,
+		exchangeAddr:        c.exchangeAddr,
+		negRiskExchangeAddr: c.negRiskExchangeAddr,
+		heartbeatInterval:   interval,
 	}
 	newC.startHeartbeats()
 	return newC
@@ -376,7 +382,7 @@ func (c *clientImpl) startHeartbeats() {
 
 func (c *clientImpl) Health(ctx context.Context) (string, error) {
 	var resp healthResponse
-	err := c.httpClient.Get(ctx, "/", nil, &resp)
+	err := c.httpClient.Get(ctx, "/ok", nil, &resp)
 	if err != nil {
 		return "DOWN", mapError(err)
 	}
@@ -463,15 +469,6 @@ func (c *clientImpl) SetNegRisk(tokenID string, negRisk bool) {
 	}
 	c.cache.mu.Lock()
 	c.cache.negRisk[tokenID] = negRisk
-	c.cache.mu.Unlock()
-}
-
-func (c *clientImpl) SetFeeRateBps(tokenID string, feeRateBps int64) {
-	if c.cache == nil || tokenID == "" || feeRateBps <= 0 {
-		return
-	}
-	c.cache.mu.Lock()
-	c.cache.feeRates[tokenID] = feeRateBps
 	c.cache.mu.Unlock()
 }
 

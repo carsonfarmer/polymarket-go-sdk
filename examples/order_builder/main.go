@@ -42,7 +42,6 @@ func main() {
 		Side("BUY").
 		Price(0.5).
 		Size(100.0).
-		FeeRateBps(0).
 		TickSize(0.01).
 		UseProxy(). // Important: Use Proxy Wallet
 		Build()
@@ -60,9 +59,9 @@ func main() {
 	fmt.Printf("TokenID: %s\n", order.TokenID.Int.String())
 	fmt.Printf("MakerAmount: %s\n", order.MakerAmount.String())
 	fmt.Printf("TakerAmount: %s\n", order.TakerAmount.String())
-	fmt.Printf("Expiration: %s\n", order.Expiration.Int.String())
 	fmt.Printf("Side: %s\n", order.Side)
 	fmt.Printf("SignatureType: %d\n", *order.SignatureType)
+	fmt.Printf("Timestamp: %d\n", order.Timestamp)
 
 	// Verify Maker matches Derived Proxy
 	if order.Maker != proxy {
@@ -78,10 +77,10 @@ func main() {
 		fmt.Println("SUCCESS: Salt is generated.")
 	}
 
-	// Verify Expiration is set (0 for GTC)
-	if order.Expiration.Int == nil {
-		log.Fatalf("Error: Expiration is nil")
+	// Verify Timestamp is set (auto-generated in V2)
+	if order.Timestamp == 0 {
+		log.Fatalf("Error: Timestamp is zero")
 	} else {
-		fmt.Println("SUCCESS: Expiration is set.")
+		fmt.Println("SUCCESS: Timestamp is set.")
 	}
 }

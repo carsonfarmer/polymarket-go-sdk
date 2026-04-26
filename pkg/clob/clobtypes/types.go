@@ -48,6 +48,7 @@ type (
 		Limit   int    `json:"limit,omitempty"`
 		Cursor  string `json:"cursor,omitempty"`
 		Active  *bool  `json:"active,omitempty"`
+		Closed  *bool  `json:"closed,omitempty"`
 		AssetID string `json:"asset_id,omitempty"`
 	}
 	BookRequest struct {
@@ -106,6 +107,16 @@ type (
 	FeeRateRequest struct {
 		TokenID string `json:"token_id"`
 	}
+	ClobMarketInfoRequest struct {
+		ConditionID string `json:"condition_id"`
+	}
+	MarketsKeysetRequest struct {
+		Limit   int    `json:"limit,omitempty"`
+		Cursor  string `json:"cursor,omitempty"`
+		Active  *bool  `json:"active,omitempty"`
+		Closed  *bool  `json:"closed,omitempty"`
+		AssetID string `json:"asset_id,omitempty"`
+	}
 	PricesHistoryRequest struct {
 		// Market is the condition ID (preferred by the API).
 		Market string `json:"market,omitempty"`
@@ -125,11 +136,15 @@ type (
 		Order     *Order    `json:"order"`
 		OrderType OrderType `json:"order_type"`
 		PostOnly  *bool     `json:"post_only,omitempty"`
+		NegRisk   *bool     `json:"-"`
 	}
 	OrderOptions struct {
 		OrderType OrderType
 		PostOnly  *bool
 		DeferExec *bool
+		// NegRisk, when true, uses the neg-risk exchange verifying contract for signing.
+		// When nil, the client will auto-detect via the API when possible.
+		NegRisk *bool
 	}
 	SignedOrder struct {
 		Order     Order  `json:"order"`
@@ -320,6 +335,26 @@ type (
 		BaseFee int64  `json:"base_fee,omitempty"`
 		FeeRate string `json:"fee_rate,omitempty"`
 	}
+	ClobMarketInfoResponse struct {
+		GST                    *string                `json:"gst,omitempty"`
+		Rewards                map[string]interface{} `json:"r,omitempty"`
+		Tokens                 []ClobMarketToken      `json:"t,omitempty"`
+		MinOrderSize           float64                `json:"mos,omitempty"`
+		MinTickSize            float64                `json:"mts,omitempty"`
+		MakerBaseFee           int64                  `json:"mbf,omitempty"`
+		TakerBaseFee           int64                  `json:"tbf,omitempty"`
+		RFQEnabled             bool                   `json:"rfqe,omitempty"`
+		TakerOrderDelayEnabled bool                   `json:"itode,omitempty"`
+		BlockaidCheckEnabled   bool                   `json:"ibce,omitempty"`
+		FeeCurve               *FeeCurve              `json:"fd,omitempty"`
+		MinOrderAgeSeconds     int64                  `json:"oas,omitempty"`
+	}
+	MarketsKeysetResponse struct {
+		Markets    []Market `json:"markets"`
+		NextCursor string   `json:"next_cursor"`
+		Limit      int      `json:"limit"`
+		Count      int      `json:"count"`
+	}
 	GeoblockResponse struct {
 		Blocked bool   `json:"blocked"`
 		IP      string `json:"ip"`
@@ -433,22 +468,52 @@ type (
 // Auxiliary types.
 type (
 	Market struct {
-		ID             string        `json:"id"`
-		Question       string        `json:"question"`
-		ConditionID    string        `json:"condition_id"`
-		Slug           string        `json:"slug"`
-		Resolution     string        `json:"resolution"`
-		EndDate        string        `json:"end_date"`
-		Tokens         []MarketToken `json:"tokens"`
-		Active         bool          `json:"active"`
-		Closed         bool          `json:"closed"`
-		Volume         string        `json:"volume,omitempty"`
-		Liquidity      string        `json:"liquidity,omitempty"`
-		Volume24hr     string        `json:"volume24hr,omitempty"`
-		Spread         string        `json:"spread,omitempty"`
-		BestBid        string        `json:"bestBid,omitempty"`
-		BestAsk        string        `json:"bestAsk,omitempty"`
-		LastTradePrice string        `json:"lastTradePrice,omitempty"`
+		// V2 API uses condition_id as the canonical identifier; id is legacy.
+		ID                    string        `json:"id,omitempty"`
+		Question              string        `json:"question"`
+		ConditionID           string        `json:"condition_id"`
+		QuestionID            string        `json:"question_id,omitempty"`
+		Description           string        `json:"description,omitempty"`
+		Slug                  string        `json:"market_slug,omitempty"`
+		Resolution            string        `json:"resolution,omitempty"`
+		EndDate               string        `json:"end_date_iso,omitempty"`
+		GameStartTime         *string       `json:"game_start_time,omitempty"`
+		Tokens                []MarketToken `json:"tokens"`
+		Tags                  []string      `json:"tags,omitempty"`
+		Active                bool          `json:"active"`
+		Closed                bool          `json:"closed"`
+		Archived              bool          `json:"archived,omitempty"`
+		EnableOrderBook       bool          `json:"enable_order_book,omitempty"`
+		AcceptingOrders       bool          `json:"accepting_orders,omitempty"`
+		AcceptingOrderTimestamp *string     `json:"accepting_order_timestamp,omitempty"`
+		MinimumOrderSize      float64       `json:"minimum_order_size,omitempty"`
+		MinimumTickSize       float64       `json:"minimum_tick_size,omitempty"`
+		SecondsDelay          int64         `json:"seconds_delay,omitempty"`
+		FPMM                  string        `json:"fpmm,omitempty"`
+		MakerBaseFee          int64         `json:"maker_base_fee,omitempty"`
+		TakerBaseFee          int64         `json:"taker_base_fee,omitempty"`
+		NotificationsEnabled  bool          `json:"notifications_enabled,omitempty"`
+		NegRisk               bool          `json:"neg_risk,omitempty"`
+		NegRiskMarketID       string        `json:"neg_risk_market_id,omitempty"`
+		NegRiskRequestID      string        `json:"neg_risk_request_id,omitempty"`
+		Icon                  string        `json:"icon,omitempty"`
+		Image                 string        `json:"image,omitempty"`
+		Is50_50Outcome        bool          `json:"is_50_50_outcome,omitempty"`
+		// Legacy fields — no longer returned by V2 but kept for compatibility.
+		Volume         string    `json:"volume,omitempty"`
+		Liquidity      string    `json:"liquidity,omitempty"`
+		Volume24hr     string    `json:"volume24hr,omitempty"`
+		Spread         string    `json:"spread,omitempty"`
+		BestBid        string    `json:"bestBid,omitempty"`
+		BestAsk        string    `json:"bestAsk,omitempty"`
+		LastTradePrice string    `json:"lastTradePrice,omitempty"`
+		FeeCurve       *FeeCurve `json:"fee_curve,omitempty"`
+	}
+
+	FeeCurve struct {
+		Rate      float64 `json:"r,omitempty"`
+		Exponent  int64   `json:"e,omitempty"`
+		TakerOnly bool    `json:"to,omitempty"`
 	}
 
 	MarketToken struct {
@@ -476,19 +541,25 @@ type (
 	}
 
 	Order struct {
-		// Define order fields
+		// Core signed fields (V2)
 		Salt          types.U256    `json:"salt"`
 		Signer        types.Address `json:"signer"`
 		Maker         types.Address `json:"maker"`
-		Taker         types.Address `json:"taker"`
 		TokenID       types.U256    `json:"token_id"`
 		MakerAmount   types.Decimal `json:"maker_amount"`
 		TakerAmount   types.Decimal `json:"taker_amount"`
-		Expiration    types.U256    `json:"expiration"`
 		Side          string        `json:"side"` // BUY/SELL
-		FeeRateBps    types.Decimal `json:"fee_rate_bps"`
-		Nonce         types.U256    `json:"nonce"`
 		SignatureType *int          `json:"signature_type,omitempty"` // 0=EOA, 1=Proxy, 2=Safe
+		Timestamp     int64         `json:"timestamp,omitempty"`      // V2: ms since epoch
+		// V2 builder attribution (replaces HMAC headers)
+		Builder string `json:"builder,omitempty"` // bytes32 hex string
+		// Metadata is a bytes32 hex string (V2). Default to zero bytes32 if empty.
+		Metadata string `json:"metadata,omitempty"`
+		// Legacy fields — kept for wire compatibility but zeroed in V2
+		Taker      types.Address `json:"taker"`
+		Expiration types.U256    `json:"expiration"`
+		FeeRateBps types.Decimal `json:"fee_rate_bps"`
+		Nonce      types.U256    `json:"nonce"`
 	}
 
 	PriceHistoryPoint struct {
@@ -622,6 +693,11 @@ type (
 		MatchTime       string `json:"match_time,omitempty"`
 	}
 
+	ClobMarketToken struct {
+		TokenID string `json:"t"`
+		Outcome string `json:"o"`
+	}
+
 	APIKeyInfo struct {
 		APIKey string `json:"apiKey"`
 		Type   string `json:"type"`
@@ -630,6 +706,98 @@ type (
 
 // PricesHistoryResponse supports both legacy array responses and the current
 // object-wrapped form returned by the API (e.g. {"history":[...]}).
+// MarketsResponse supports both legacy "data" wrapper and V2 "markets" wrapper.
+func (m *MarketsResponse) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return nil
+	}
+
+	var wrapper struct {
+		Data       []Market `json:"data"`
+		Markets    []Market `json:"markets"`
+		NextCursor string   `json:"next_cursor"`
+		Limit      int      `json:"limit"`
+		Count      int      `json:"count"`
+	}
+	if err := json.Unmarshal(trimmed, &wrapper); err != nil {
+		return err
+	}
+	if wrapper.Markets != nil {
+		m.Data = wrapper.Markets
+	} else {
+		m.Data = wrapper.Data
+	}
+	m.NextCursor = wrapper.NextCursor
+	m.Limit = wrapper.Limit
+	m.Count = wrapper.Count
+	return nil
+}
+
+// ClobMarketInfoResponse unmarshals with fallback for full-word keys if single-letter keys are absent.
+func (c *ClobMarketInfoResponse) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return nil
+	}
+
+	var short struct {
+		GST                    *string                `json:"gst"`
+		Rewards                map[string]interface{} `json:"r"`
+		Tokens                 []ClobMarketToken      `json:"t"`
+		MinOrderSize           float64                `json:"mos"`
+		MinTickSize            float64                `json:"mts"`
+		MakerBaseFee           int64                  `json:"mbf"`
+		TakerBaseFee           int64                  `json:"tbf"`
+		RFQEnabled             bool                   `json:"rfqe"`
+		TakerOrderDelayEnabled bool                   `json:"itode"`
+		BlockaidCheckEnabled   bool                   `json:"ibce"`
+		FeeCurve               *FeeCurve              `json:"fd"`
+		MinOrderAgeSeconds     int64                  `json:"oas"`
+	}
+	if err := json.Unmarshal(trimmed, &short); err != nil {
+		return err
+	}
+	*c = ClobMarketInfoResponse(short)
+
+	// Fallback: if single-letter keys yielded empty results, try full-word keys
+	if c.MinOrderSize == 0 && c.MinTickSize == 0 && len(c.Tokens) == 0 {
+		var long struct {
+			MinOrderSize       float64           `json:"min_order_size"`
+			MinTickSize        float64           `json:"min_tick_size"`
+			MakerBaseFee       int64             `json:"maker_base_fee"`
+			TakerBaseFee       int64             `json:"taker_base_fee"`
+			RFQEnabled         bool              `json:"rfq_enabled"`
+			MinOrderAgeSeconds int64             `json:"min_order_age_seconds"`
+			Tokens             []ClobMarketToken `json:"tokens"`
+		}
+		if err := json.Unmarshal(trimmed, &long); err == nil {
+			if c.MinOrderSize == 0 {
+				c.MinOrderSize = long.MinOrderSize
+			}
+			if c.MinTickSize == 0 {
+				c.MinTickSize = long.MinTickSize
+			}
+			if c.MakerBaseFee == 0 {
+				c.MakerBaseFee = long.MakerBaseFee
+			}
+			if c.TakerBaseFee == 0 {
+				c.TakerBaseFee = long.TakerBaseFee
+			}
+			if !c.RFQEnabled {
+				c.RFQEnabled = long.RFQEnabled
+			}
+			if c.MinOrderAgeSeconds == 0 {
+				c.MinOrderAgeSeconds = long.MinOrderAgeSeconds
+			}
+			if len(c.Tokens) == 0 {
+				c.Tokens = long.Tokens
+			}
+		}
+	}
+	return nil
+}
+
 func (p *PricesHistoryResponse) UnmarshalJSON(data []byte) error {
 	trimmed := bytes.TrimSpace(data)
 	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {

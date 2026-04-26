@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/shopspring/decimal"
@@ -21,20 +22,21 @@ type OrderBuilder struct {
 
 	tokenID    string
 	side       string
-	price      decimal.Decimal
-	size       decimal.Decimal
-	feeRateBps decimal.Decimal
-	tickSize   float64
+	price    decimal.Decimal
+	size     decimal.Decimal
+	tickSize float64
 	orderType  clobtypes.OrderType
 
 	// Optional overrides
 	maker         *common.Address
 	funder        *common.Address
 	taker         *common.Address
-	nonce         *big.Int
 	expiration    *big.Int
 	signatureType *auth.SignatureType
 	postOnly      *bool
+	builderCode   string // V2 builder attribution
+	metadata      string // V2 metadata (bytes32 hex)
+	negRisk       bool   // V2 neg-risk market flag
 
 	saltGenerator SaltGenerator
 
@@ -113,27 +115,28 @@ func (b *OrderBuilder) SizeDec(size decimal.Decimal) *OrderBuilder {
 	return b
 }
 
-// FeeRateBps sets the fee rate in basis points using a float64 (default 0).
-func (b *OrderBuilder) FeeRateBps(bps float64) *OrderBuilder {
-	b.feeRateBps = decimal.NewFromFloat(bps)
-	return b
-}
-
-// FeeRateBpsDec sets the fee rate in basis points using a decimal.Decimal.
-func (b *OrderBuilder) FeeRateBpsDec(bps decimal.Decimal) *OrderBuilder {
-	b.feeRateBps = bps
-	return b
-}
-
 // TickSize sets a manual tick size override (e.g. "0.01").
 func (b *OrderBuilder) TickSize(tickSize float64) *OrderBuilder {
 	b.tickSize = tickSize
 	return b
 }
 
-// Nonce overrides the order nonce.
-func (b *OrderBuilder) Nonce(nonce *big.Int) *OrderBuilder {
-	b.nonce = nonce
+// BuilderCode sets the builder attribution code (bytes32 hex string) for V2 orders.
+func (b *OrderBuilder) BuilderCode(code string) *OrderBuilder {
+	b.builderCode = code
+	return b
+}
+
+// Metadata sets the order metadata (bytes32 hex string) for V2 orders.
+func (b *OrderBuilder) Metadata(metadata string) *OrderBuilder {
+	b.metadata = metadata
+	return b
+}
+
+// NegRisk marks the order as belonging to a neg-risk market, which uses a
+// different EIP-712 verifying contract. When not set, the client auto-detects.
+func (b *OrderBuilder) NegRisk(negRisk bool) *OrderBuilder {
+	b.negRisk = negRisk
 	return b
 }
 
@@ -226,6 +229,7 @@ func (b *OrderBuilder) BuildSignableWithContext(ctx context.Context) (*clobtypes
 		Order:     order,
 		OrderType: orderType,
 		PostOnly:  b.postOnly,
+		NegRisk:   &b.negRisk,
 	}, nil
 }
 
@@ -311,11 +315,6 @@ func (b *OrderBuilder) BuildMarketWithContext(ctx context.Context) (*clobtypes.S
 		return nil, fmt.Errorf("price %s is out of bounds for tick size %s", price.String(), tickSize.String())
 	}
 
-	feeRateBps, err := b.resolveFeeRateBps(ctx, b.tokenID)
-	if err != nil {
-		return nil, err
-	}
-
 	truncScale := tickScale + lotSizeScale
 	rawAmount := b.amount.value
 	var makerAmount, takerAmount decimal.Decimal
@@ -366,11 +365,6 @@ func (b *OrderBuilder) BuildMarketWithContext(ctx context.Context) (*clobtypes.S
 		taker = *b.taker
 	}
 
-	nonce := big.NewInt(0)
-	if b.nonce != nil {
-		nonce = b.nonce
-	}
-
 	salt, err := b.generateSalt()
 	if err != nil {
 		return nil, err
@@ -384,16 +378,20 @@ func (b *OrderBuilder) BuildMarketWithContext(ctx context.Context) (*clobtypes.S
 		TokenID:       types.U256{Int: tokenIDInt},
 		MakerAmount:   types.Decimal(makerFixed),
 		TakerAmount:   types.Decimal(takerFixed),
-		Expiration:    types.U256{Int: big.NewInt(0)},
 		Side:          side,
-		FeeRateBps:    types.Decimal(decimal.NewFromInt(feeRateBps)),
-		Nonce:         types.U256{Int: nonce},
 		SignatureType: &sigType,
+		Timestamp:     time.Now().UnixMilli(),
+		Builder:       b.builderCode,
+		Metadata:      b.metadata,
+	}
+	if b.expiration != nil && b.expiration.Sign() > 0 {
+		order.Expiration = types.U256{Int: b.expiration}
 	}
 
 	return &clobtypes.SignableOrder{
 		Order:     order,
 		OrderType: orderType,
+		NegRisk:   &b.negRisk,
 	}, nil
 }
 
@@ -443,11 +441,6 @@ func (b *OrderBuilder) buildLimit(ctx context.Context) (*clobtypes.Order, error)
 		return nil, fmt.Errorf("size must be positive")
 	}
 
-	feeRateBps, err := b.resolveFeeRateBps(ctx, b.tokenID)
-	if err != nil {
-		return nil, err
-	}
-
 	truncScale := tickScale + lotSizeScale
 	var makerAmount, takerAmount decimal.Decimal
 	if side == "BUY" {
@@ -490,25 +483,12 @@ func (b *OrderBuilder) buildLimit(ctx context.Context) (*clobtypes.Order, error)
 		taker = *b.taker
 	}
 
-	nonce := big.NewInt(0)
-	if b.nonce != nil {
-		nonce = b.nonce
-	}
-
 	salt, err := b.generateSalt()
 	if err != nil {
 		return nil, err
 	}
 
-	expiration := big.NewInt(0)
-	if b.expiration != nil {
-		if b.expiration.Sign() < 0 {
-			return nil, fmt.Errorf("expiration must be non-negative")
-		}
-		expiration = b.expiration
-	}
-
-	return &clobtypes.Order{
+	order := &clobtypes.Order{
 		Salt:          types.U256{Int: salt},
 		Signer:        b.signer.Address(),
 		Maker:         maker,
@@ -516,10 +496,15 @@ func (b *OrderBuilder) buildLimit(ctx context.Context) (*clobtypes.Order, error)
 		TokenID:       types.U256{Int: tokenIDInt},
 		MakerAmount:   types.Decimal(makerFixed),
 		TakerAmount:   types.Decimal(takerFixed),
-		Expiration:    types.U256{Int: expiration},
 		Side:          side,
-		FeeRateBps:    types.Decimal(decimal.NewFromInt(feeRateBps)),
-		Nonce:         types.U256{Int: nonce},
 		SignatureType: &sigType,
-	}, nil
+		Timestamp:     time.Now().UnixMilli(),
+		Builder:       b.builderCode,
+		Metadata:      b.metadata,
+	}
+	if b.expiration != nil && b.expiration.Sign() > 0 {
+		order.Expiration = types.U256{Int: b.expiration}
+	}
+
+	return order, nil
 }
